@@ -11,7 +11,7 @@ class MainActivity : Activity() {
         tv.text = "بعد المكالمة - النسخة التجريبية"
         tv.textSize = 22f
         tv.setTextColor(0xFF000000.toInt())
-        tv.setPadding(48, 96, 48, 48)
+        tv.setPadding(48, 300, 48, 48)
         setContentView(tv)
     }
 }
