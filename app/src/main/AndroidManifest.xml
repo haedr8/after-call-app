@@ -20,6 +20,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".CallDialogActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
+
         <receiver
             android:name=".CallReceiver"
             android:exported="true">
