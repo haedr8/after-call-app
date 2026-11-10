@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.ContentResolver
 import android.content.Context
@@ -75,6 +76,18 @@ class CallReceiver : BroadcastReceiver() {
         }
 
         val shown = if (name.isNotEmpty()) name + " - " + number else number
+
+        val open = Intent(context, CallDialogActivity::class.java)
+        open.putExtra("number", number)
+        open.putExtra("name", name)
+        open.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val pi = PendingIntent.getActivity(
+            context,
+            0,
+            open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "after_call"
         nm.createNotificationChannel(
@@ -84,6 +97,7 @@ class CallReceiver : BroadcastReceiver() {
             .setSmallIcon(android.R.drawable.sym_action_call)
             .setContentTitle("انتهت المكالمة")
             .setContentText(shown)
+            .setContentIntent(pi)
             .setAutoCancel(true)
             .build()
         nm.notify(1, notification)
