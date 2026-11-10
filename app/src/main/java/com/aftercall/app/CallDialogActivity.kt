@@ -36,7 +36,13 @@ class CallDialogActivity : Activity() {
         addButton(root, "مراسلة واتساب") {
             val text = Uri.encode("السلام عليكم")
             val uri = Uri.parse("https://wa.me/" + waNumber(number) + "?text=" + text)
-            startActivity(Intent(Intent.ACTION_VIEW, uri))
+            val wa = Intent(Intent.ACTION_VIEW, uri)
+            wa.setPackage("com.whatsapp")
+            try {
+                startActivity(wa)
+            } catch (e: Exception) {
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+            }
             finish()
         }
         addButton(root, "إرسال SMS") {
