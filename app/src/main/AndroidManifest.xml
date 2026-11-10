@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.instagram.android" />
+    </queries>
+
     <application
         android:label="بعد المكالمة"
         android:supportsRtl="true">
@@ -34,6 +39,16 @@
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
+
+        <service
+            android:name=".WhatsAppCallListener"
+            android:exported="true"
+            android:label="بعد المكالمة"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
     </application>
 </manifest>
