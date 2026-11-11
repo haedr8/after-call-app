@@ -13,7 +13,8 @@
     </queries>
 
     <application
-        android:label="بعد المكالمة"
+        android:icon="@mipmap/ic_launcher"
+        android:label="حولني"
         android:supportsRtl="true">
 
         <activity
@@ -43,7 +44,7 @@
         <service
             android:name=".WhatsAppCallListener"
             android:exported="true"
-            android:label="بعد المكالمة"
+            android:label="حولني"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
