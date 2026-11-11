@@ -9,7 +9,6 @@ import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
 import android.provider.CallLog
-import android.telephony.TelephonyManager
 
 class App : Application() {
     override fun onCreate() {
@@ -25,13 +24,13 @@ class CallLogJobService : JobService() {
         schedule(ctx)
         Thread {
             try {
-                if (isIdle(ctx)) {
-                    val info = readLastCall(ctx, 0L)
-                    if (info != null && CallGate.claim(ctx, info.date)) {
-                        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                        val exists = nm.activeNotifications.any { it.id == 1 }
-                        Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !exists)
-                    }
+                val info = readLastCall(ctx, 0L)
+                if (info != null && CallGate.claim(ctx, info.date)) {
+                    ctx.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
+                        .edit().putBoolean("active", false).apply()
+                    val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    val exists = nm.activeNotifications.any { it.id == 1 }
+                    Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !exists)
                 }
             } catch (e: Exception) {
             }
@@ -44,17 +43,6 @@ class CallLogJobService : JobService() {
 
     companion object {
         private const val JOB_ID = 4711
-
-        @Suppress("DEPRECATION")
-        private fun isIdle(ctx: Context): Boolean {
-            val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                ?: return true
-            return try {
-                tm.callState == TelephonyManager.CALL_STATE_IDLE
-            } catch (e: Exception) {
-                true
-            }
-        }
 
         fun ensure(ctx: Context) {
             try {
