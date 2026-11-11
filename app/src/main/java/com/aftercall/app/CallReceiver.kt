@@ -45,6 +45,18 @@ fun readLastCall(ctx: Context, start: Long): CallInfo? {
     }
 }
 
+object CallGate {
+    @Synchronized
+    fun claim(ctx: Context, date: Long): Boolean {
+        val p = ctx.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
+        var last = p.getLong("last_date", 0L)
+        if (last == 0L) last = System.currentTimeMillis() - 10 * 60 * 1000
+        if (date <= last) return false
+        p.edit().putLong("last_date", date).apply()
+        return true
+    }
+}
+
 object Notifier {
     fun show(
         ctx: Context, id: Int, title: String, number: String, name: String,
@@ -105,30 +117,33 @@ class CallReceiver : BroadcastReceiver() {
                 if (num.isNotBlank()) p.edit().putString("last_number", num).apply()
             }
             TelephonyManager.EXTRA_STATE_IDLE -> {
-                if (p.getBoolean("active", false)) {
-                    val start = p.getLong("start", 0L)
-                    val known = p.getString("last_number", "") ?: ""
-                    p.edit().putBoolean("active", false).apply()
-                    val app = context.applicationContext
+                val wasActive = p.getBoolean("active", false)
+                val known = p.getString("last_number", "") ?: ""
+                p.edit().putBoolean("active", false).apply()
+                val app = context.applicationContext
+                if (wasActive) {
                     // إشعار فوري بدون انتظار
                     Notifier.show(app, 1, "انتهت المكالمة", known, "")
-                    val pending = goAsync()
-                    poll(app, start, pending, 0)
                 }
+                val pending = goAsync()
+                poll(app, wasActive, pending, 0)
             }
         }
     }
 
-    private fun poll(ctx: Context, start: Long, pending: BroadcastReceiver.PendingResult, attempt: Int) {
-        val info = readLastCall(ctx, start)
-        if (info != null) {
-            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, false)
+    private fun poll(
+        ctx: Context, shownBefore: Boolean,
+        pending: BroadcastReceiver.PendingResult, attempt: Int
+    ) {
+        val info = readLastCall(ctx, 0L)
+        if (info != null && CallGate.claim(ctx, info.date)) {
+            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shownBefore)
             pending.finish()
         } else if (attempt >= 12) {
             pending.finish()
         } else {
             Handler(Looper.getMainLooper()).postDelayed({
-                poll(ctx, start, pending, attempt + 1)
+                poll(ctx, shownBefore, pending, attempt + 1)
             }, 250)
         }
     }
