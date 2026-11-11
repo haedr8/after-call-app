@@ -4,11 +4,15 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
+import android.view.ViewOutlineProvider
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -36,10 +40,20 @@ class MainActivity : Activity() {
         root.orientation = LinearLayout.VERTICAL
         root.setPadding(48, 300, 48, 48)
 
+        val logoBox = FrameLayout(this)
+        val boxBg = GradientDrawable()
+        boxBg.cornerRadius = 70f
+        boxBg.setColor(0xFF12997F.toInt())
+        logoBox.background = boxBg
+        logoBox.outlineProvider = ViewOutlineProvider.BACKGROUND
+        logoBox.clipToOutline = true
+        logoBox.layoutParams = LinearLayout.LayoutParams(300, 300)
+
         val logo = ImageView(this)
         logo.setImageResource(R.mipmap.ic_launcher)
-        logo.adjustViewBounds = true
-        logo.layoutParams = LinearLayout.LayoutParams(300, 300)
+        logo.scaleType = ImageView.ScaleType.CENTER_CROP
+        logo.layoutParams = FrameLayout.LayoutParams(400, 400, Gravity.CENTER)
+        logoBox.addView(logo)
 
         status = TextView(this)
         status.textSize = 20f
@@ -71,7 +85,7 @@ class MainActivity : Activity() {
         btn3.text = "📷 haedr.m1"
         btn3.setOnClickListener { openInstagram() }
 
-        root.addView(logo)
+        root.addView(logoBox)
         root.addView(status)
         root.addView(btn)
         root.addView(waStatus)
