@@ -18,115 +18,118 @@ import android.telephony.TelephonyManager
 
 class CallInfo(val number: String, val name: String, val date: Long)
 
+fun readLastCall(ctx: Context, start: Long): CallInfo? {
+    if (ctx.checkSelfPermission(Manifest.permission.READ_CALL_LOG) !=
+        PackageManager.PERMISSION_GRANTED
+    ) return null
+    return try {
+        val args = Bundle().apply {
+            putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "date DESC")
+            putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
+        }
+        ctx.contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.DATE),
+            args,
+            null
+        )?.use { c ->
+            if (c.moveToFirst()) {
+                val date = c.getLong(2)
+                if (date >= start - 5000) {
+                    CallInfo(c.getString(0) ?: "", c.getString(1) ?: "", date)
+                } else null
+            } else null
+        }
+    } catch (e: Exception) {
+        null
+    }
+}
+
+object Notifier {
+    fun show(
+        ctx: Context, id: Int, title: String, number: String, name: String,
+        alert: Boolean = true
+    ) {
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.getNotificationChannel("after_call") == null) {
+            nm.createNotificationChannel(
+                NotificationChannel("after_call", "حولني", NotificationManager.IMPORTANCE_HIGH)
+            )
+        }
+        if (alert) nm.cancel(id)
+        val i = Intent(ctx, CallDialogActivity::class.java).apply {
+            putExtra("number", number)
+            putExtra("name", name)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val pi = PendingIntent.getActivity(
+            ctx, id, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val text = when {
+            name.isNotBlank() && number.isNotBlank() -> "$name - $number"
+            name.isNotBlank() -> name
+            number.isNotBlank() -> number
+            else -> "اضغط لعرض الخيارات"
+        }
+        val n = Notification.Builder(ctx, "after_call")
+            .setSmallIcon(R.drawable.ic_notif)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
+        try {
+            nm.notify(id, n)
+        } catch (e: SecurityException) {
+        }
+    }
+}
+
 class CallReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
-        val prefs = context.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
-        val wasActive = prefs.getBoolean("active", false)
-
-        if (state == TelephonyManager.EXTRA_STATE_RINGING ||
-            state == TelephonyManager.EXTRA_STATE_OFFHOOK
-        ) {
-            if (!wasActive) {
-                prefs.edit()
-                    .putLong("start", System.currentTimeMillis())
-                    .putBoolean("active", true)
-                    .apply()
+        val p = context.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
+        @Suppress("DEPRECATION")
+        val num = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: ""
+        when (state) {
+            TelephonyManager.EXTRA_STATE_RINGING,
+            TelephonyManager.EXTRA_STATE_OFFHOOK -> {
+                if (!p.getBoolean("active", false)) {
+                    p.edit().putBoolean("active", true)
+                        .putLong("start", System.currentTimeMillis())
+                        .putString("last_number", "").apply()
+                }
+                if (num.isNotBlank()) p.edit().putString("last_number", num).apply()
             }
-        } else if (state == TelephonyManager.EXTRA_STATE_IDLE) {
-            prefs.edit().putBoolean("active", false).apply()
-            if (wasActive) {
-                val start = prefs.getLong("start", 0L)
-                val pending = goAsync()
-                poll(context, pending, start, 0)
+            TelephonyManager.EXTRA_STATE_IDLE -> {
+                if (p.getBoolean("active", false)) {
+                    val start = p.getLong("start", 0L)
+                    val known = p.getString("last_number", "") ?: ""
+                    p.edit().putBoolean("active", false).apply()
+                    val app = context.applicationContext
+                    // إشعار فوري بدون انتظار
+                    Notifier.show(app, 1, "انتهت المكالمة", known, "")
+                    val pending = goAsync()
+                    poll(app, start, pending, 0)
+                }
             }
         }
     }
 
-    private fun poll(
-        context: Context,
-        pending: BroadcastReceiver.PendingResult,
-        start: Long,
-        attempt: Int
-    ) {
-        val info = readLastCall(context)
-        val fresh = info != null && info.date >= start - 5000
-        if (fresh || attempt >= 12) {
-            try {
-                showNotification(context, info?.number ?: "", info?.name ?: "")
-            } finally {
-                pending.finish()
-            }
+    private fun poll(ctx: Context, start: Long, pending: BroadcastReceiver.PendingResult, attempt: Int) {
+        val info = readLastCall(ctx, start)
+        if (info != null) {
+            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, false)
+            pending.finish()
+        } else if (attempt >= 12) {
+            pending.finish()
         } else {
             Handler(Looper.getMainLooper()).postDelayed({
-                poll(context, pending, start, attempt + 1)
+                poll(ctx, start, pending, attempt + 1)
             }, 250)
         }
-    }
-
-    private fun readLastCall(context: Context): CallInfo? {
-        if (context.checkSelfPermission(Manifest.permission.READ_CALL_LOG)
-            != PackageManager.PERMISSION_GRANTED
-        ) return null
-
-        val args = Bundle()
-        args.putStringArray(
-            ContentResolver.QUERY_ARG_SORT_COLUMNS,
-            arrayOf(CallLog.Calls.DATE)
-        )
-        args.putInt(
-            ContentResolver.QUERY_ARG_SORT_DIRECTION,
-            ContentResolver.QUERY_SORT_DIRECTION_DESCENDING
-        )
-        args.putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
-
-        var result: CallInfo? = null
-        val cursor = context.contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
-            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.DATE),
-            args,
-            null
-        )
-        cursor?.use {
-            if (it.moveToFirst()) {
-                result = CallInfo(
-                    it.getString(0) ?: "",
-                    it.getString(1) ?: "",
-                    it.getLong(2)
-                )
-            }
-        }
-        return result
-    }
-
-    private fun showNotification(context: Context, number: String, name: String) {
-        val shown = if (name.isNotEmpty()) name + " - " + number else number
-
-        val open = Intent(context, CallDialogActivity::class.java)
-        open.putExtra("number", number)
-        open.putExtra("name", name)
-        open.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        val pi = PendingIntent.getActivity(
-            context,
-            0,
-            open,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "after_call"
-        nm.createNotificationChannel(
-            NotificationChannel(channelId, "بعد المكالمة", NotificationManager.IMPORTANCE_HIGH)
-        )
-        val notification = Notification.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.sym_action_call)
-            .setContentTitle("انتهت المكالمة")
-            .setContentText(shown)
-            .setContentIntent(pi)
-            .setAutoCancel(true)
-            .build()
-        nm.notify(1, notification)
     }
 }
