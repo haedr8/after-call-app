@@ -34,6 +34,14 @@ class MainActivity : Activity() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
+    private fun versionLabel(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1"
+        } catch (e: Exception) {
+            "1"
+        }
+    }
+
     private fun needed(): Array<String> {
         val l = mutableListOf(
             Manifest.permission.READ_PHONE_STATE,
@@ -138,7 +146,7 @@ class MainActivity : Activity() {
 
         col.addView(btn("سياسة الخصوصية") { openUrl(privacyUrl) })
 
-        col.addView(text("الإصدار " + Updater.currentCode(this), 13f, 0xFF555555.toInt()))
+        col.addView(text("الإصدار " + versionLabel(), 13f, 0xFF555555.toInt()))
         col.addView(btn("🔄 فحص التحديثات") { checkUpdates(true) })
 
         col.addView(text("تصميم وتطوير: حيدر محمد", 15f, 0xFF000000.toInt()))
