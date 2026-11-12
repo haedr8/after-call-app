@@ -27,6 +27,14 @@ jobs:
         with:
           gradle-version: 8.13
 
+      - name: Compute version number
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          N=$(gh release list --limit 300 | wc -l)
+          echo "name=$((N+1))" >> "$GITHUB_OUTPUT"
+
       - name: Decode signing key
         env:
           KS: ${{ secrets.KEYSTORE_BASE64 }}
@@ -40,6 +48,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.ver.outputs.name }}
         run: gradle assembleRelease bundleRelease --stacktrace
 
       - uses: actions/upload-artifact@v4
@@ -59,4 +68,4 @@ jobs:
         run: |
           cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/haulni.apk"
           if [ ! -f RELEASE_NOTES.md ]; then echo "تحسينات عامة" > RELEASE_NOTES.md; fi
-          gh release create "v${{ github.run_number }}" "$RUNNER_TEMP/haulni.apk" --title "حولني v${{ github.run_number }}" --notes-file RELEASE_NOTES.md --latest
+          gh release create "v${{ github.run_number }}" "$RUNNER_TEMP/haulni.apk" --title "حولني - إصدار ${{ steps.ver.outputs.name }}" --notes-file RELEASE_NOTES.md --latest
