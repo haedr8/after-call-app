@@ -50,7 +50,10 @@ class CallLogJobService : JobService() {
         fun ensure(ctx: Context) {
             try {
                 val js = ctx.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-                if (js.getPendingJob(JOB_ID) == null) schedule(ctx)
+                if (js.getPendingJob(JOB_ID) == null) {
+                    schedule(ctx)
+                    Diag.log(ctx, "job scheduled")
+                }
             } catch (e: Exception) {
             }
         }
@@ -67,10 +70,11 @@ class CallLogJobService : JobService() {
                     )
                     .setTriggerContentUpdateDelay(300)
                     .setTriggerContentMaxDelay(1500)
-                    .setPersisted(true)
                     .build()
-                js.schedule(job)
+                val r = js.schedule(job)
+                if (r != JobScheduler.RESULT_SUCCESS) Diag.log(ctx, "schedule failed")
             } catch (e: Exception) {
+                Diag.log(ctx, "schedule error: " + e.message)
             }
         }
     }
