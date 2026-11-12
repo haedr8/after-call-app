@@ -29,7 +29,6 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var waStatus: TextView
     private lateinit var batStatus: TextView
-    private lateinit var diagView: TextView
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
@@ -139,16 +138,6 @@ class MainActivity : Activity() {
 
         col.addView(btn("سياسة الخصوصية") { openUrl(privacyUrl) })
 
-        diagView = text("", 11f, 0xFF333333.toInt())
-        diagView.setTextIsSelectable(true)
-        diagView.gravity = Gravity.START
-        col.addView(text("سجل التشخيص", 13f, 0xFF000000.toInt()))
-        col.addView(diagView)
-        col.addView(btn("مسح السجل") {
-            getSharedPreferences("diag", MODE_PRIVATE).edit().clear().apply()
-            refresh()
-        })
-
         col.addView(text("تصميم وتطوير: حيدر محمد", 15f, 0xFF000000.toInt()))
         col.addView(btn("📷 haedr.m1") { openInstagram() })
 
@@ -175,7 +164,6 @@ class MainActivity : Activity() {
 
         val pm = getSystemService(PowerManager::class.java)
         val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
-        diagView.text = getSharedPreferences("diag", MODE_PRIVATE).getString("log", "") ?: ""
         batStatus.text = if (free) "✅ الخلفية مسموحة" else "⚠️ البطارية قد توقف التطبيق"
     }
 
