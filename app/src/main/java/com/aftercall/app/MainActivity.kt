@@ -32,6 +32,10 @@ class MainActivity : Activity() {
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
+    // غيّر يوزر التيك توك هنا (بدون @)
+    private val tiktokUser = "haedr.m1"
+    private val instagramUser = "haedr.m1"
+
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun versionLabel(): String {
@@ -65,6 +69,15 @@ class MainActivity : Activity() {
         text = t
         isAllCaps = false
         setTextColor(0xFF000000.toInt())
+        setOnClickListener { onClick() }
+    }
+
+    private fun iconBtn(t: String, icon: Int, onClick: () -> Unit): Button = Button(this).apply {
+        text = t
+        isAllCaps = false
+        setTextColor(0xFF000000.toInt())
+        setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
+        compoundDrawablePadding = dp(8)
         setOnClickListener { onClick() }
     }
 
@@ -150,7 +163,17 @@ class MainActivity : Activity() {
         col.addView(btn("🔄 فحص التحديثات") { checkUpdates(true) })
 
         col.addView(text("تصميم وتطوير: حيدر محمد", 15f, 0xFF000000.toInt()))
-        col.addView(btn("📷 haedr.m1") { openInstagram() })
+
+        val social = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+        }
+        val lp1 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        val lp2 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        social.addView(iconBtn(tiktokUser, R.drawable.ic_tiktok) { openTikTok() }, lp1)
+        social.addView(iconBtn(instagramUser, R.drawable.ic_instagram) { openInstagram() }, lp2)
+        col.addView(social, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         scroll.addView(col, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -248,12 +271,25 @@ class MainActivity : Activity() {
     private fun openInstagram() {
         try {
             startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse("http://instagram.com/_u/haedr.m1"))
+                Intent(Intent.ACTION_VIEW, Uri.parse("http://instagram.com/_u/$instagramUser"))
                     .setPackage("com.instagram.android")
             )
         } catch (e: Exception) {
-            openUrl("https://instagram.com/haedr.m1")
+            openUrl("https://instagram.com/$instagramUser")
         }
+    }
+
+    private fun openTikTok() {
+        val url = Uri.parse("https://www.tiktok.com/@$tiktokUser")
+        val packages = listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill")
+        for (p in packages) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, url).setPackage(p))
+                return
+            } catch (e: Exception) {
+            }
+        }
+        openUrl("https://www.tiktok.com/@$tiktokUser")
     }
 
     private fun showRestrictedHelp() {
