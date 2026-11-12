@@ -12,11 +12,14 @@ h1{color:#0B7A86} h2{color:#0B7A86;margin-top:28px} hr{margin:40px 0}
 </head>
 <body>
 <h1>سياسة الخصوصية - تطبيق «حولني»</h1>
-<p>آخر تحديث: 11 نوفمبر 2026</p>
+<p>آخر تحديث: 12 نوفمبر 2026</p>
 <p>تطبيق «حولني» (Haulni) من تصميم وتطوير حيدر محمد. يعرض التطبيق بعد انتهاء المكالمة نافذة بخيارات سريعة (رسالة واتساب، رسالة SMS، إعادة اتصال).</p>
 
 <h2>البيانات التي نجمعها</h2>
-<p><b>لا نجمع أي بيانات.</b> لا يملك التطبيق صلاحية الإنترنت، ولا يرسل أي معلومة إلى أي خادم أو جهة. لا توجد إعلانات ولا أدوات تحليل ولا حسابات مستخدمين. كل المعالجة تتم داخل هاتفك فقط، ولا يتم حفظ أرقامك أو جهات اتصالك أو سجل مكالماتك.</p>
+<p><b>لا نجمع أي بيانات شخصية.</b> لا توجد إعلانات ولا أدوات تحليل ولا حسابات مستخدمين. كل معالجة المكالمات تتم داخل هاتفك فقط، ولا يتم حفظ أرقامك أو جهات اتصالك أو سجل مكالماتك ولا إرسالها لأي جهة.</p>
+
+<h2>الاتصال بالإنترنت</h2>
+<p>يتصل التطبيق بالإنترنت لغرض واحد فقط: التحقق من وجود إصدار جديد وتنزيله من صفحة الإصدارات في موقع GitHub. لا يتم إرسال أي بيانات عنك أو عن مكالماتك في هذا الاتصال. موقع GitHub قد يسجّل عنوان الاتصال حسب سياسته الخاصة.</p>
 
 <h2>الصلاحيات ولماذا نطلبها</h2>
 <ul>
@@ -26,6 +29,9 @@ h1{color:#0B7A86} h2{color:#0B7A86;margin-top:28px} hr{margin:40px 0}
 <li><b>الاتصال الهاتفي (CALL_PHONE):</b> لتنفيذ «إعادة اتصال» عند ضغطك على الزر فقط.</li>
 <li><b>الإشعارات (POST_NOTIFICATIONS):</b> لإظهار إشعار «انتهت المكالمة».</li>
 <li><b>الوصول إلى الإشعارات (اختياري):</b> لمعرفة انتهاء مكالمات واتساب فقط. يتجاهل التطبيق أي إشعار آخر، ولا يقرأ محتوى الرسائل.</li>
+<li><b>الإنترنت (INTERNET):</b> للتحقق من التحديثات وتنزيلها فقط.</li>
+<li><b>تثبيت الحزم (REQUEST_INSTALL_PACKAGES):</b> لفتح شاشة تثبيت التحديث بعد أن تضغط «تنزيل التحديث». لا يتم التثبيت دون موافقتك.</li>
+<li><b>التشغيل بعد إعادة التشغيل (RECEIVE_BOOT_COMPLETED):</b> لإبقاء مراقبة انتهاء المكالمات تعمل.</li>
 </ul>
 
 <h2>الرسائل</h2>
@@ -47,10 +53,12 @@ h1{color:#0B7A86} h2{color:#0B7A86;margin-top:28px} hr{margin:40px 0}
 
 <div class="en">
 <h1>Privacy Policy - Haulni</h1>
-<p>Last updated: November 11, 2026</p>
+<p>Last updated: November 12, 2026</p>
 <p>Haulni is developed by Haidar Mohammed. After a call ends, it shows a quick-action dialog (WhatsApp message, SMS, call back).</p>
 <h2>Data collection</h2>
-<p><b>We collect no data.</b> The app has no internet permission and sends nothing to any server or third party. There are no ads, analytics or user accounts. Everything is processed on your device only; call numbers, contacts and call history are never stored.</p>
+<p><b>We collect no personal data.</b> There are no ads, analytics or user accounts. Call handling happens on your device only; call numbers, contacts and call history are never stored or sent anywhere.</p>
+<h2>Internet use</h2>
+<p>The app connects to the internet only to check for and download new versions from the app's GitHub releases page. No data about you or your calls is sent. GitHub may log the connection under its own policy.</p>
 <h2>Permissions</h2>
 <ul>
 <li><b>READ_PHONE_STATE:</b> to detect when a call ends.</li>
@@ -59,6 +67,9 @@ h1{color:#0B7A86} h2{color:#0B7A86;margin-top:28px} hr{margin:40px 0}
 <li><b>CALL_PHONE:</b> to place a call only when you tap "call back".</li>
 <li><b>POST_NOTIFICATIONS:</b> to show the "call ended" notification.</li>
 <li><b>Notification access (optional):</b> only to detect the end of WhatsApp calls. Other notifications are ignored and message content is never read.</li>
+<li><b>INTERNET:</b> only to check for and download updates.</li>
+<li><b>REQUEST_INSTALL_PACKAGES:</b> to open the system installer after you tap "download update". Nothing is installed without your approval.</li>
+<li><b>RECEIVE_BOOT_COMPLETED:</b> to keep call-end monitoring working after a restart.</li>
 </ul>
 <h2>Messages</h2>
 <p>WhatsApp and SMS buttons open the chat with prefilled text; you press send yourself. The app never sends messages automatically.</p>
