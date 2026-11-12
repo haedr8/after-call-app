@@ -3,7 +3,10 @@ package com.aftercall.app
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.GradientDrawable
@@ -32,9 +35,9 @@ class MainActivity : Activity() {
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
-    // غيّر يوزر التيك توك هنا (بدون @)
     private val tiktokUser = "haedr.m1"
     private val instagramUser = "haedr.m1"
+    private val supportWa = "9647712384075"
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
@@ -157,6 +160,7 @@ class MainActivity : Activity() {
         })
         col.addView(btn("التشغيل التلقائي (شاومي / أوبو / فيفو / هواوي / سامسونج)") { showOemHelp() })
 
+        col.addView(btn("🛠 تشخيص المشاكل / إرسال تقرير") { showDiag() })
         col.addView(btn("سياسة الخصوصية") { openUrl(privacyUrl) })
 
         col.addView(text("الإصدار " + versionLabel(), 13f, 0xFF555555.toInt()))
@@ -179,6 +183,67 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         setContentView(scroll)
         checkUpdates(false)
+    }
+
+    private fun diagText(): String {
+        val sb = StringBuilder()
+        sb.append("تقرير تطبيق حولني\n")
+        sb.append("الإصدار: ").append(versionLabel()).append("\n")
+        sb.append("الجهاز: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n")
+        sb.append("أندرويد: ").append(Build.VERSION.RELEASE)
+            .append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
+        sb.append("\nالصلاحيات:\n")
+        for (p in needed()) {
+            val ok = checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
+            sb.append(if (ok) "✅ " else "❌ ").append(p.substringAfterLast('.')).append("\n")
+        }
+        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
+        sb.append(if (enabled.contains(packageName)) "✅" else "❌").append(" مراقبة واتساب\n")
+        val pm = getSystemService(PowerManager::class.java)
+        val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
+        sb.append(if (free) "✅" else "❌").append(" الخلفية (البطارية)\n")
+        val log = getSharedPreferences("diag", MODE_PRIVATE).getString("log", "") ?: ""
+        sb.append("\nسجل الأحداث:\n")
+        sb.append(if (log.isBlank()) "(فارغ: لم يصل أي حدث للتطبيق)" else log)
+        return sb.toString()
+    }
+
+    private fun showDiag() {
+        val report = diagText()
+        val tv = TextView(this).apply {
+            text = report
+            textSize = 13f
+            setTextColor(0xFF000000.toInt())
+            setPadding(dp(20), dp(12), dp(20), dp(12))
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setTextIsSelectable(true)
+        }
+        val sv = ScrollView(this)
+        sv.addView(tv)
+        AlertDialog.Builder(this)
+            .setTitle("تشخيص المشاكل")
+            .setView(sv)
+            .setPositiveButton("📋 نسخ") { _, _ ->
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("تقرير حولني", report))
+                Toast.makeText(this, "تم النسخ ✅ الصقه وأرسله", Toast.LENGTH_LONG).show()
+            }
+            .setNeutralButton("📲 إرسال لحيدر") { _, _ -> sendReport(report) }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun sendReport(report: String) {
+        val url = "https://wa.me/" + supportWa + "?text=" + Uri.encode(report)
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).setPackage("com.whatsapp"))
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            } catch (e2: Exception) {
+                Toast.makeText(this, "واتساب غير موجود، استخدم زر النسخ", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun checkUpdates(manual: Boolean) {
@@ -315,31 +380,4 @@ class MainActivity : Activity() {
                     "شاومي / ريدمي / بوكو: فعّل «التشغيل التلقائي» لحولني، ثم في البطارية اختر «بدون قيود».\n\n" +
                     "أوبو / ريلمي / ون بلس: فعّل «السماح بالتشغيل التلقائي» و«السماح بالنشاط في الخلفية».\n\n" +
                     "فيفو: فعّل «التشغيل التلقائي» و«استهلاك عالي للبطارية في الخلفية».\n\n" +
-                    "هواوي / هونر: إدارة التشغيل ← حولني ← إدارة يدوية ← فعّل الثلاثة.\n\n" +
-                    "وفي كل الهواتف: اقفل التطبيق في قائمة التطبيقات الأخيرة (🔒) إن وُجد الخيار."
-            )
-            .setPositiveButton("فتح الإعدادات") { _, _ -> openAutostart() }
-            .setNegativeButton("إغلاق", null)
-            .show()
-    }
-
-    private fun openAutostart() {
-        val tries = listOf(
-            "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
-            "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
-            "com.oppo.safe" to "com.oppo.safe.permission.startup.StartupAppListActivity",
-            "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
-            "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
-            "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
-            "com.asus.mobilemanager" to "com.asus.mobilemanager.autostart.AutoStartActivity"
-        )
-        for ((pkg, cls) in tries) {
-            try {
-                startActivity(Intent().setComponent(ComponentName(pkg, cls)))
-                return
-            } catch (e: Exception) {
-            }
-        }
-        openAppInfo()
-    }
-}
+                    "تكنو / إنفينكس / إيتل: Phone Master ← إدارة التشغيل التلقائي ← فعّل «حولني»، وفي البطارية اختر «بدون قيود»، واقفل التطبيق 🔒 في التطبيقات الأخيرة.\n\n" +
