@@ -132,6 +132,7 @@ class CallReceiver : BroadcastReceiver() {
             }
             TelephonyManager.EXTRA_STATE_IDLE -> {
                 val wasActive = p.getBoolean("active", false)
+                val since = if (wasActive) p.getLong("start", 0L) else System.currentTimeMillis() - 20000
                 val known = p.getString("last_number", "") ?: ""
                 p.edit().putBoolean("active", false).apply()
                 val app = context.applicationContext
@@ -141,16 +142,16 @@ class CallReceiver : BroadcastReceiver() {
                     Notifier.show(app, 1, "انتهت المكالمة", known, "")
                 }
                 val pending = goAsync()
-                poll(app, wasActive, pending, 0)
+                poll(app, wasActive, since, pending, 0)
             }
         }
     }
 
     private fun poll(
-        ctx: Context, shownBefore: Boolean,
+        ctx: Context, shownBefore: Boolean, since: Long,
         pending: BroadcastReceiver.PendingResult, attempt: Int
     ) {
-        val info = readLastCall(ctx, 0L)
+        val info = readLastCall(ctx, since)
         if (attempt == 0 || attempt == 12) Diag.log(ctx, "poll#$attempt info=${info?.date}")
         if (info != null && CallGate.claim(ctx, info.date)) {
             Diag.log(ctx, "poll claimed -> notify")
@@ -160,7 +161,7 @@ class CallReceiver : BroadcastReceiver() {
             pending.finish()
         } else {
             Handler(Looper.getMainLooper()).postDelayed({
-                poll(ctx, shownBefore, pending, attempt + 1)
+                poll(ctx, shownBefore, since, pending, attempt + 1)
             }, 250)
         }
     }
