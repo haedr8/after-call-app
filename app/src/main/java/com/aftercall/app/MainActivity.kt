@@ -381,3 +381,32 @@ class MainActivity : Activity() {
                     "أوبو / ريلمي / ون بلس: فعّل «السماح بالتشغيل التلقائي» و«السماح بالنشاط في الخلفية».\n\n" +
                     "فيفو: فعّل «التشغيل التلقائي» و«استهلاك عالي للبطارية في الخلفية».\n\n" +
                     "تكنو / إنفينكس / إيتل: Phone Master ← إدارة التشغيل التلقائي ← فعّل «حولني»، وفي البطارية اختر «بدون قيود»، واقفل التطبيق 🔒 في التطبيقات الأخيرة.\n\n" +
+                    "هواوي / هونر: إدارة التشغيل ← حولني ← إدارة يدوية ← فعّل الثلاثة.\n\n" +
+                    "وفي كل الهواتف: اقفل التطبيق في قائمة التطبيقات الأخيرة (🔒) إن وُجد الخيار."
+            )
+            .setPositiveButton("فتح الإعدادات") { _, _ -> openAutostart() }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun openAutostart() {
+        val tries = listOf(
+            "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
+            "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
+            "com.oppo.safe" to "com.oppo.safe.permission.startup.StartupAppListActivity",
+            "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+            "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
+            "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+            "com.asus.mobilemanager" to "com.asus.mobilemanager.autostart.AutoStartActivity",
+            "com.transsion.phonemaster" to "com.cyin.himgr.autostart.AutostartActivity"
+        )
+        for ((pkg, cls) in tries) {
+            try {
+                startActivity(Intent().setComponent(ComponentName(pkg, cls)))
+                return
+            } catch (e: Exception) {
+            }
+        }
+        openAppInfo()
+    }
+}
