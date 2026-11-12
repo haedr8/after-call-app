@@ -138,12 +138,65 @@ class MainActivity : Activity() {
 
         col.addView(btn("سياسة الخصوصية") { openUrl(privacyUrl) })
 
+        col.addView(text("الإصدار " + Updater.currentCode(this), 13f, 0xFF555555.toInt()))
+        col.addView(btn("🔄 فحص التحديثات") { checkUpdates(true) })
+
         col.addView(text("تصميم وتطوير: حيدر محمد", 15f, 0xFF000000.toInt()))
         col.addView(btn("📷 haedr.m1") { openInstagram() })
 
         scroll.addView(col, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         setContentView(scroll)
+        checkUpdates(false)
+    }
+
+    private fun checkUpdates(manual: Boolean) {
+        if (manual) Toast.makeText(this, "جاري الفحص...", Toast.LENGTH_SHORT).show()
+        Updater.check(this) { info, error ->
+            if (!isFinishing && !isDestroyed) {
+                if (info != null) {
+                    showUpdateDialog(info)
+                } else if (manual) {
+                    val msg = if (error) "تعذر الفحص، تأكد من الإنترنت" else "أنت على آخر إصدار ✅"
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showUpdateDialog(info: UpdateInfo) {
+        val notes = if (info.notes.isBlank()) "تحسينات عامة" else info.notes
+        AlertDialog.Builder(this)
+            .setTitle("تحديث جديد متوفر")
+            .setMessage("ما الجديد:\n" + notes)
+            .setPositiveButton("تنزيل التحديث") { _, _ -> startDownload(info) }
+            .setNegativeButton("لاحقاً", null)
+            .show()
+    }
+
+    private fun startDownload(info: UpdateInfo) {
+        if (!Updater.canInstall(this)) {
+            Toast.makeText(
+                this,
+                "فعّل «السماح من هذا المصدر» ثم ارجع واضغط فحص التحديثات",
+                Toast.LENGTH_LONG
+            ).show()
+            Updater.openInstallSettings(this)
+            return
+        }
+        val d = AlertDialog.Builder(this)
+            .setTitle("جاري تنزيل التحديث")
+            .setMessage("0%")
+            .setCancelable(false)
+            .show()
+        Updater.download(this, info, { p -> d.setMessage("$p%") }, { f ->
+            d.dismiss()
+            if (f != null) {
+                Updater.install(this, f)
+            } else {
+                Toast.makeText(this, "فشل التنزيل، حاول مرة ثانية", Toast.LENGTH_LONG).show()
+            }
+        })
     }
 
     override fun onResume() {
