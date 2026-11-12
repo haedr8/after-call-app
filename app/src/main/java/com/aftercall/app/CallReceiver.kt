@@ -64,4 +64,108 @@ object CallGate {
         val p = ctx.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
         var last = p.getLong("last_date", 0L)
         if (last == 0L) last = System.currentTimeMillis() - 10 * 60 * 1000
-        if (date <= last) retur
+        if (date <= last) return false
+        p.edit().putLong("last_date", date).apply()
+        return true
+    }
+}
+
+object Notifier {
+    fun show(
+        ctx: Context, id: Int, title: String, number: String, name: String,
+        alert: Boolean = true
+    ) {
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.getNotificationChannel("after_call") == null) {
+            nm.createNotificationChannel(
+                NotificationChannel("after_call", "حولني", NotificationManager.IMPORTANCE_HIGH)
+            )
+        }
+        if (alert) nm.cancel(id)
+        val i = Intent(ctx, CallDialogActivity::class.java).apply {
+            putExtra("number", number)
+            putExtra("name", name)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val pi = PendingIntent.getActivity(
+            ctx, id, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val text = when {
+            name.isNotBlank() && number.isNotBlank() -> "$name - $number"
+            name.isNotBlank() -> name
+            number.isNotBlank() -> number
+            else -> "اضغط لعرض الخيارات"
+        }
+        val n = Notification.Builder(ctx, "after_call")
+            .setSmallIcon(R.drawable.ic_notif)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
+        try {
+            nm.notify(id, n)
+        } catch (e: SecurityException) {
+        }
+    }
+}
+
+class CallReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
+        val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
+        Diag.log(context, "state=$state")
+        val p = context.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
+        @Suppress("DEPRECATION")
+        val num = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: ""
+        when (state) {
+            TelephonyManager.EXTRA_STATE_RINGING,
+            TelephonyManager.EXTRA_STATE_OFFHOOK -> {
+                if (!p.getBoolean("active", false)) {
+                    p.edit().putBoolean("active", true)
+                        .putLong("start", System.currentTimeMillis())
+                        .putString("last_number", "").apply()
+                }
+                if (num.isNotBlank()) p.edit().putString("last_number", num).apply()
+            }
+            TelephonyManager.EXTRA_STATE_IDLE -> {
+                val nowIdle = System.currentTimeMillis()
+                if (nowIdle - p.getLong("last_idle", 0L) < 1500) return
+                p.edit().putLong("last_idle", nowIdle).apply()
+                val wasActive = p.getBoolean("active", false)
+                val since = if (wasActive) p.getLong("start", 0L) else System.currentTimeMillis() - 20000
+                val known = p.getString("last_number", "") ?: ""
+                p.edit().putBoolean("active", false).apply()
+                val app = context.applicationContext
+                Diag.log(app, "IDLE wasActive=$wasActive")
+                if (wasActive) {
+                    // إشعار فوري بدون انتظار
+                    Notifier.show(app, 1, "انتهت المكالمة", known, "")
+                }
+                val pending = goAsync()
+                poll(app, wasActive, since, pending, 0)
+            }
+        }
+    }
+
+    private fun poll(
+        ctx: Context, shownBefore: Boolean, since: Long,
+        pending: BroadcastReceiver.PendingResult, attempt: Int
+    ) {
+        val info = readLastCall(ctx, since)
+        if (attempt == 0 || attempt == 12) Diag.log(ctx, "poll#$attempt info=${info?.date}")
+        if (info != null && CallGate.claim(ctx, info.date)) {
+            Diag.log(ctx, "poll claimed -> notify")
+            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shownBefore)
+            pending.finish()
+        } else if (attempt >= 12) {
+            pending.finish()
+        } else {
+            Handler(Looper.getMainLooper()).postDelayed({
+                poll(ctx, shownBefore, since, pending, attempt + 1)
+            }, 250)
+        }
+    }
+}
