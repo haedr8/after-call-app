@@ -19,7 +19,8 @@ class WhatsAppCallListener : NotificationListenerService() {
         getSharedPreferences("aftercall", Context.MODE_PRIVATE)
 
     private fun isWaCall(s: StatusBarNotification): Boolean =
-        s.packageName == "com.whatsapp" && s.notification.category == Notification.CATEGORY_CALL
+        (s.packageName == Store.WA || s.packageName == Store.WA_B) &&
+            s.notification.category == Notification.CATEGORY_CALL
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (!isWaCall(sbn)) return
