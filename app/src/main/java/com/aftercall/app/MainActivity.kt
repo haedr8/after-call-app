@@ -5,7 +5,6 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -129,6 +128,11 @@ class MainActivity : Activity() {
         col.addView(text("حولني", 28f, 0xFF000000.toInt()))
         col.addView(text("خيارات سريعة بعد كل مكالمة", 15f, 0xFF555555.toInt()))
 
+        col.addView(btn("⚙️ الإعدادات (الرسائل، الإشعارات، النافذة)") {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        })
+        col.addView(btn("🧭 دليل الإعداد خطوة بخطوة") { Wizard.start(this) })
+
         status = text("", 16f, 0xFF000000.toInt())
         col.addView(status)
         col.addView(btn("منح الصلاحيات") { requestPermissions(needed(), 1) })
@@ -158,7 +162,7 @@ class MainActivity : Activity() {
                 openAppInfo()
             }
         })
-        col.addView(btn("التشغيل التلقائي (شاومي / أوبو / فيفو / هواوي / سامسونج)") { showOemHelp() })
+        col.addView(btn("التشغيل التلقائي (شاومي / أوبو / فيفو / تكنو / سامسونج)") { showOemHelp() })
 
         col.addView(btn("🛠 تشخيص المشاكل / إرسال تقرير") { showDiag() })
         col.addView(btn("سياسة الخصوصية") { openUrl(privacyUrl) })
@@ -183,6 +187,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         setContentView(scroll)
         checkUpdates(false)
+        if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this)
     }
 
     private fun diagText(): String {
@@ -377,38 +382,9 @@ class MainActivity : Activity() {
     private fun showOemHelp() {
         AlertDialog.Builder(this)
             .setTitle("حتى لا يوقف الهاتف التطبيق")
-            .setMessage(
-                "سامسونج: الإعدادات ← البطارية ← حدود استخدام الخلفية ← التطبيقات التي لا تنام أبداً ← أضف «حولني».\n\n" +
-                    "شاومي / ريدمي / بوكو: فعّل «التشغيل التلقائي» لحولني، ثم في البطارية اختر «بدون قيود».\n\n" +
-                    "أوبو / ريلمي / ون بلس: فعّل «السماح بالتشغيل التلقائي» و«السماح بالنشاط في الخلفية».\n\n" +
-                    "فيفو: فعّل «التشغيل التلقائي» و«استهلاك عالي للبطارية في الخلفية».\n\n" +
-                    "تكنو / إنفينكس / إيتل: Phone Master ← إدارة التشغيل التلقائي ← فعّل «حولني»، وفي البطارية اختر «بدون قيود»، واقفل التطبيق 🔒 في التطبيقات الأخيرة.\n\n" +
-                    "هواوي / هونر: إدارة التشغيل ← حولني ← إدارة يدوية ← فعّل الثلاثة.\n\n" +
-                    "وفي كل الهواتف: اقفل التطبيق في قائمة التطبيقات الأخيرة (🔒) إن وُجد الخيار."
-            )
-            .setPositiveButton("فتح الإعدادات") { _, _ -> openAutostart() }
+            .setMessage(Oem.allTips())
+            .setPositiveButton("فتح الإعدادات") { _, _ -> Oem.openAutostart(this) }
             .setNegativeButton("إغلاق", null)
             .show()
-    }
-
-    private fun openAutostart() {
-        val tries = listOf(
-            "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
-            "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
-            "com.oppo.safe" to "com.oppo.safe.permission.startup.StartupAppListActivity",
-            "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
-            "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
-            "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
-            "com.asus.mobilemanager" to "com.asus.mobilemanager.autostart.AutoStartActivity",
-            "com.transsion.phonemaster" to "com.cyin.himgr.autostart.AutostartActivity"
-        )
-        for ((pkg, cls) in tries) {
-            try {
-                startActivity(Intent().setComponent(ComponentName(pkg, cls)))
-                return
-            } catch (e: Exception) {
-            }
-        }
-        openAppInfo()
     }
 }
