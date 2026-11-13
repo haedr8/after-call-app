@@ -12,7 +12,6 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -22,32 +21,17 @@ import android.widget.Toast
 
 class SettingsActivity : Activity() {
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int): Int = T.dp(this, v)
 
     private fun toast(s: String) {
         Toast.makeText(this, s, Toast.LENGTH_LONG).show()
     }
 
-    private fun label(t: String, size: Float, color: Int): TextView = TextView(this).apply {
-        text = t
-        textSize = size
-        setTextColor(color)
-        gravity = Gravity.CENTER
-        setPadding(0, dp(12), 0, dp(4))
-    }
-
-    private fun btn(t: String, onClick: () -> Unit): Button = Button(this).apply {
-        text = t
-        isAllCaps = false
-        setTextColor(0xFF000000.toInt())
-        setOnClickListener { onClick() }
-    }
-
     private fun sw(label: String, key: String, def: Boolean, after: ((Boolean) -> Unit)?): Switch {
         val s = Switch(this)
         s.text = label
-        s.textSize = 16f
-        s.setTextColor(0xFF000000.toInt())
+        s.textSize = 15f
+        s.setTextColor(T.INK)
         s.setPadding(0, dp(10), 0, dp(10))
         s.isChecked = Store.getBool(this, key, def)
         s.setOnCheckedChangeListener { _, v ->
@@ -57,25 +41,34 @@ class SettingsActivity : Activity() {
         return s
     }
 
+    private fun section(col: LinearLayout, title: String): LinearLayout {
+        col.addView(T.label(this, title, 14f, T.MUTED, true), T.gap(this, 18))
+        val c = T.card(this)
+        col.addView(c, T.gap(this, 8))
+        return c
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sv = ScrollView(this)
-        sv.setBackgroundColor(0xFFFFFFFF.toInt())
+        sv.setBackgroundColor(T.BG)
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
         col.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        col.setPadding(dp(20), dp(24), dp(20), dp(24))
-        Ui.fit(col, dp(20), dp(24))
+        col.setPadding(dp(16), dp(16), dp(16), dp(16))
+        Ui.fit(col, dp(16), dp(16))
 
-        col.addView(label("⚙️ الإعدادات", 26f, 0xFF000000.toInt()))
+        val title = T.label(this, "⚙️ الإعدادات", 24f, T.INK, true)
+        title.gravity = Gravity.CENTER
+        col.addView(title, T.gap(this, 4))
 
-        col.addView(label("متى يظهر إشعار «انتهت المكالمة»؟", 15f, 0xFF555555.toInt()))
-        col.addView(sw("المكالمات الواردة", "in", true, null))
-        col.addView(sw("المكالمات الصادرة", "out", true, null))
-        col.addView(sw("المكالمات الفائتة (مع أزرار اتصال وواتساب)", "missed", true, null))
+        val a = section(col, "متى يظهر إشعار «انتهت المكالمة»؟")
+        a.addView(sw("المكالمات الواردة", "in", true, null))
+        a.addView(sw("المكالمات الصادرة", "out", true, null))
+        a.addView(sw("المكالمات الفائتة (مع أزرار اتصال وواتساب)", "missed", true, null))
 
-        col.addView(label("المراقبة", 15f, 0xFF555555.toInt()))
-        col.addView(sw("الخدمة الدائمة (موصى بها لتكنو وغيرها)", "service", true) { v ->
+        val b = section(col, "المراقبة")
+        b.addView(sw("الخدمة الدائمة (موصى بها لتكنو وغيرها)", "service", true) { v ->
             try {
                 if (v) {
                     MonitorService.start(this)
@@ -85,7 +78,7 @@ class SettingsActivity : Activity() {
             } catch (e: Exception) {
             }
         })
-        col.addView(sw("نافذة عائمة بعد المكالمة", "bubble", false) { v ->
+        b.addView(sw("نافذة عائمة بعد المكالمة", "bubble", false) { v ->
             if (v && !Settings.canDrawOverlays(this)) {
                 toast("اسمح بـ«العرض فوق التطبيقات» ثم ارجع")
                 try {
@@ -97,16 +90,16 @@ class SettingsActivity : Activity() {
             }
         })
 
-        col.addView(label("الرسائل", 15f, 0xFF555555.toInt()))
-        col.addView(btn("✏️ تعديل رسائل الأزرار") { editTemplates() })
+        val c = section(col, "الرسائل")
+        c.addView(T.button(this, "✏️ تعديل رسائل الأزرار", true) { editTemplates() })
 
-        col.addView(label("النسخ الاحتياطي", 15f, 0xFF555555.toInt()))
-        col.addView(btn("📤 نسخ احتياطي (نسخ للحافظة)") {
+        val d = section(col, "النسخ الاحتياطي")
+        d.addView(T.button(this, "📤 نسخ احتياطي (نسخ للحافظة)", false) {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("حولني", Store.backup(this)))
             toast("تم النسخ ✅ الصقه بمكان آمن (مثل ملاحظات واتساب)")
         })
-        col.addView(btn("📥 استعادة (من الحافظة)") {
+        d.addView(T.button(this, "📥 استعادة (من الحافظة)", false) {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = cm.primaryClip
             val t = if (clip != null && clip.itemCount > 0) {
@@ -114,10 +107,13 @@ class SettingsActivity : Activity() {
             } else {
                 ""
             }
-            toast(if (Store.restore(this, t)) "تمت الاستعادة ✅ أعد فتح الإعدادات" else "ما لقيت نسخة صالحة بالحافظة")
-        })
+            toast(
+                if (Store.restore(this, t)) "تمت الاستعادة ✅ أعد فتح الإعدادات"
+                else "ما لقيت نسخة صالحة بالحافظة"
+            )
+        }, T.gap(this, 10))
 
-        col.addView(btn("رجوع") { finish() })
+        col.addView(T.button(this, "رجوع", true) { finish() }, T.gap(this, 22))
 
         sv.addView(
             col,
@@ -155,9 +151,9 @@ class SettingsActivity : Activity() {
             .setPositiveButton("حفظ") { _, _ ->
                 val out = ArrayList<Tpl>()
                 for (i in 0 until 8) {
-                    val a = labels[i].text.toString().trim()
-                    val b = texts[i].text.toString().trim()
-                    if (a.isNotEmpty() && b.isNotEmpty()) out.add(Tpl(a, b))
+                    val x = labels[i].text.toString().trim()
+                    val y = texts[i].text.toString().trim()
+                    if (x.isNotEmpty() && y.isNotEmpty()) out.add(Tpl(x, y))
                 }
                 if (out.isEmpty()) {
                     toast("لازم زر واحد على الأقل")
