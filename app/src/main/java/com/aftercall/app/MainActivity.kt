@@ -17,7 +17,6 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -28,9 +27,11 @@ import android.widget.Toast
 
 class MainActivity : Activity() {
 
-    private lateinit var status: TextView
-    private lateinit var waStatus: TextView
-    private lateinit var batStatus: TextView
+    private class SRow(val label: TextView, val fix: Button)
+
+    private lateinit var rPerm: SRow
+    private lateinit var rBat: SRow
+    private lateinit var rWa: SRow
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
@@ -39,7 +40,7 @@ class MainActivity : Activity() {
     private val supportWa = "9647712384075"
     private val zainCash = "07712384075"
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int): Int = T.dp(this, v)
 
     private fun versionLabel(): String {
         return try {
@@ -60,152 +61,193 @@ class MainActivity : Activity() {
         return l.toTypedArray()
     }
 
-    private fun text(t: String, size: Float, color: Int): TextView = TextView(this).apply {
-        text = t
-        textSize = size
-        setTextColor(color)
-        gravity = Gravity.CENTER
-        setPadding(0, dp(8), 0, dp(4))
+    private fun statusRow(parent: LinearLayout, fixText: String, onFix: () -> Unit): SRow {
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        row.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val tv = T.label(this, "", 15f, T.INK, true)
+        val b = T.button(this, fixText, false, onFix)
+        b.textSize = 13f
+        b.minHeight = 0
+        b.minimumHeight = 0
+        b.setPadding(dp(14), dp(6), dp(14), dp(6))
+        row.addView(tv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(b, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)))
+        parent.addView(row, T.gap(this, 10))
+        return SRow(tv, b)
     }
 
-    private fun btn(t: String, onClick: () -> Unit): Button = Button(this).apply {
-        text = t
-        isAllCaps = false
-        setTextColor(0xFF000000.toInt())
-        setOnClickListener { onClick() }
-    }
-
-    private fun iconBtn(t: String, icon: Int, onClick: () -> Unit): Button = Button(this).apply {
-        text = t
-        isAllCaps = false
-        setTextColor(0xFF000000.toInt())
-        setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
-        compoundDrawablePadding = dp(8)
-        setOnClickListener { onClick() }
+    private fun tileRow(a: View, b: View): LinearLayout {
+        val r = LinearLayout(this)
+        r.orientation = LinearLayout.HORIZONTAL
+        r.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val p1 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
+        p1.setMargins(dp(5), 0, dp(5), 0)
+        val p2 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
+        p2.setMargins(dp(5), 0, dp(5), 0)
+        r.addView(a, p1)
+        r.addView(b, p2)
+        return r
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val scroll = ScrollView(this)
-        scroll.setBackgroundColor(0xFFFFFFFF.toInt())
+        scroll.setBackgroundColor(T.BG)
 
-        val col = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(20), dp(24), dp(20), dp(24))
-        }
-        col.setOnApplyWindowInsetsListener { v, ins ->
-            val top: Int
-            val bottom: Int
-            if (Build.VERSION.SDK_INT >= 30) {
-                val b = ins.getInsets(WindowInsets.Type.systemBars())
-                top = b.top
-                bottom = b.bottom
-            } else {
-                @Suppress("DEPRECATION")
-                top = ins.systemWindowInsetTop
-                @Suppress("DEPRECATION")
-                bottom = ins.systemWindowInsetBottom
-            }
-            v.setPadding(dp(20), top + dp(24), dp(20), bottom + dp(24))
-            ins
-        }
+        val col = LinearLayout(this)
+        col.orientation = LinearLayout.VERTICAL
+        col.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        col.setPadding(dp(16), dp(16), dp(16), dp(16))
+        Ui.fit(col, dp(16), dp(16))
 
-        val box = FrameLayout(this)
-        box.background = GradientDrawable().apply {
-            cornerRadius = dp(34).toFloat()
-            colors = intArrayOf(0xFF0B7A86.toInt(), 0xFF1CC47A.toInt())
-            orientation = GradientDrawable.Orientation.TL_BR
-        }
-        box.clipToOutline = true
+        // ---- البطاقة العلوية ----
+        val header = LinearLayout(this)
+        header.orientation = LinearLayout.HORIZONTAL
+        header.gravity = Gravity.CENTER_VERTICAL
+        header.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val hbg = GradientDrawable()
+        hbg.colors = intArrayOf(T.TEAL, T.GREEN)
+        hbg.orientation = GradientDrawable.Orientation.TL_BR
+        hbg.cornerRadius = dp(28).toFloat()
+        header.background = hbg
+        header.setPadding(dp(18), dp(18), dp(18), dp(18))
+
+        val logoBox = FrameLayout(this)
+        logoBox.background = T.shape(this, 0x33FFFFFF, 20)
+        logoBox.clipToOutline = true
         val img = ImageView(this)
         img.setImageResource(R.mipmap.ic_fg)
         img.scaleType = ImageView.ScaleType.CENTER_CROP
-        box.addView(img, FrameLayout.LayoutParams(dp(140), dp(140), Gravity.CENTER))
-        col.addView(box, LinearLayout.LayoutParams(dp(140), dp(140)))
+        logoBox.addView(img, FrameLayout.LayoutParams(dp(76), dp(76)))
+        header.addView(logoBox, LinearLayout.LayoutParams(dp(76), dp(76)))
 
-        col.addView(text("حولني", 28f, 0xFF000000.toInt()))
-        col.addView(text("خيارات سريعة بعد كل مكالمة", 15f, 0xFF555555.toInt()))
+        val ht = LinearLayout(this)
+        ht.orientation = LinearLayout.VERTICAL
+        ht.setPadding(dp(14), 0, dp(14), 0)
+        ht.addView(T.label(this, "حولني", 26f, T.WHITE, true))
+        ht.addView(T.label(this, "خيارات سريعة بعد كل مكالمة", 13f, 0xE6FFFFFF.toInt()))
+        val ver = T.label(this, "الإصدار " + versionLabel(), 12f, T.WHITE)
+        ver.background = T.shape(this, 0x33FFFFFF, 12)
+        ver.setPadding(dp(10), dp(3), dp(10), dp(3))
+        val vp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        vp.topMargin = dp(8)
+        ht.addView(ver, vp)
+        header.addView(ht, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        col.addView(header, T.gap(this, 0))
 
-        col.addView(btn("⚙️ الإعدادات (الرسائل، الإشعارات، النافذة)") {
-            startActivity(Intent(this, SettingsActivity::class.java))
-        })
-        col.addView(btn("🧭 دليل الإعداد خطوة بخطوة") { Wizard.start(this) })
-
-        status = text("", 16f, 0xFF000000.toInt())
-        col.addView(status)
-        col.addView(btn("منح الصلاحيات") { requestPermissions(needed(), 1) })
-
-        waStatus = text("", 16f, 0xFF000000.toInt())
-        col.addView(waStatus)
-        col.addView(btn("تفعيل مراقبة واتساب") {
-            try {
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            } catch (e: Exception) {
-                openAppInfo()
-            }
-        })
+        // ---- حالة التطبيق ----
+        val st = T.card(this)
+        st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
+        rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
+        rBat = statusRow(st, "سماح") { batterySettings() }
+        rWa = statusRow(st, "تفعيل") { listenerSettings() }
         if (Build.VERSION.SDK_INT >= 33) {
-            col.addView(btn("الخيار رمادي ولا يمكن تفعيله؟") { showRestrictedHelp() })
+            val help = T.label(this, "الخيار رمادي ولا يمكن تفعيله؟ اضغط هنا", 12f, T.TEAL)
+            help.setPadding(0, dp(10), 0, 0)
+            help.setOnClickListener { showRestrictedHelp() }
+            st.addView(help)
         }
+        col.addView(st, T.gap(this, 14))
 
-        batStatus = text("", 16f, 0xFF000000.toInt())
-        col.addView(batStatus)
-        col.addView(btn("السماح بالعمل في الخلفية (البطارية)") {
-            try {
-                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                Toast.makeText(
-                    this, "اختر «كل التطبيقات» ثم حولني ثم «عدم التحسين»", Toast.LENGTH_LONG
-                ).show()
-            } catch (e: Exception) {
-                openAppInfo()
-            }
-        })
-        col.addView(btn("التشغيل التلقائي (شاومي / أوبو / فيفو / تكنو / سامسونج)") { showOemHelp() })
+        // ---- الأدوات ----
+        col.addView(T.label(this, "الأدوات", 14f, T.MUTED, true), T.gap(this, 18))
+        col.addView(
+            tileRow(
+                T.tile(this, "⚙️", "الإعدادات") {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                },
+                T.tile(this, "🧭", "دليل الإعداد") { Wizard.start(this) }
+            ),
+            T.gap(this, 8)
+        )
+        col.addView(
+            tileRow(
+                T.tile(this, "🔋", "التشغيل التلقائي") { showOemHelp() },
+                T.tile(this, "🛠", "تشخيص المشاكل") { showDiag() }
+            ),
+            T.gap(this, 10)
+        )
+        col.addView(
+            tileRow(
+                T.tile(this, "🔄", "فحص التحديثات") { checkUpdates(true) },
+                T.tile(this, "🔒", "سياسة الخصوصية") { openUrl(privacyUrl) }
+            ),
+            T.gap(this, 10)
+        )
 
-        col.addView(btn("🛠 تشخيص المشاكل / إرسال تقرير") { showDiag() })
-        col.addView(btn("سياسة الخصوصية") { openUrl(privacyUrl) })
+        // ---- الدعم ----
+        col.addView(T.button(this, "💚 دعم المطوّر (زين كاش)", false) { showDonate() }, T.gap(this, 18))
 
-        col.addView(text("الإصدار " + versionLabel(), 13f, 0xFF555555.toInt()))
-        col.addView(btn("🔄 فحص التحديثات") { checkUpdates(true) })
+        // ---- التذييل ----
+        val credit = T.label(this, "تصميم وتطوير: حيدر محمد", 14f, T.MUTED)
+        credit.gravity = Gravity.CENTER
+        col.addView(credit, T.gap(this, 22))
 
-        col.addView(btn("💚 دعم المطوّر (زين كاش)") { showDonate() })
+        val social = LinearLayout(this)
+        social.orientation = LinearLayout.HORIZONTAL
+        social.gravity = Gravity.CENTER
+        social.layoutDirection = View.LAYOUT_DIRECTION_LTR
+        val c1 = T.chip(this, tiktokUser, R.drawable.ic_tiktok) { openTikTok() }
+        val c2 = T.chip(this, instagramUser, R.drawable.ic_instagram) { openInstagram() }
+        val sp1 = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        sp1.setMargins(dp(6), 0, dp(6), 0)
+        val sp2 = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        sp2.setMargins(dp(6), 0, dp(6), 0)
+        social.addView(c1, sp1)
+        social.addView(c2, sp2)
+        col.addView(social, T.gap(this, 10))
 
-        col.addView(text("تصميم وتطوير: حيدر محمد", 15f, 0xFF000000.toInt()))
-
-        val social = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
-        }
-        val lp1 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        val lp2 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        social.addView(iconBtn(tiktokUser, R.drawable.ic_tiktok) { openTikTok() }, lp1)
-        social.addView(iconBtn(instagramUser, R.drawable.ic_instagram) { openInstagram() }, lp2)
-        col.addView(social, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-
-        scroll.addView(col, ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        scroll.addView(
+            col,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
         setContentView(scroll)
         checkUpdates(false)
         if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this)
     }
 
-    private fun showDonate() {
-        val tv = TextView(this).apply {
-            text = "التطبيق مجاني بالكامل 🌹\n\n" +
-                "إذا أعجبك وتحب تدعم المطوّر، تقدر تتبرع (اختياري تماماً) عبر زين كاش على هذا الرقم:\n\n" +
-                zainCash + "\n\n" +
-                "شكراً لدعمك 💚"
-            textSize = 16f
-            setTextColor(0xFF000000.toInt())
-            gravity = Gravity.CENTER
-            setPadding(dp(20), dp(16), dp(20), dp(8))
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setTextIsSelectable(true)
+    private fun batterySettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            Toast.makeText(
+                this, "اختر «كل التطبيقات» ثم حولني ثم «عدم التحسين»", Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            openAppInfo()
         }
+    }
+
+    private fun listenerSettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        } catch (e: Exception) {
+            openAppInfo()
+        }
+    }
+
+    private fun showDonate() {
+        val tv = TextView(this)
+        tv.text = "التطبيق مجاني بالكامل 🌹\n\n" +
+            "إذا أعجبك وتحب تدعم المطوّر، تقدر تتبرع (اختياري تماماً) عبر زين كاش على هذا الرقم:\n\n" +
+            zainCash + "\n\n" +
+            "شكراً لدعمك 💚"
+        tv.textSize = 16f
+        tv.setTextColor(0xFF000000.toInt())
+        tv.gravity = Gravity.CENTER
+        tv.setPadding(dp(20), dp(16), dp(20), dp(8))
+        tv.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        tv.setTextIsSelectable(true)
         AlertDialog.Builder(this)
             .setTitle("💚 دعم المطوّر")
             .setView(tv)
@@ -243,14 +285,13 @@ class MainActivity : Activity() {
 
     private fun showDiag() {
         val report = diagText()
-        val tv = TextView(this).apply {
-            text = report
-            textSize = 13f
-            setTextColor(0xFF000000.toInt())
-            setPadding(dp(20), dp(12), dp(20), dp(12))
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setTextIsSelectable(true)
-        }
+        val tv = TextView(this)
+        tv.text = report
+        tv.textSize = 13f
+        tv.setTextColor(0xFF000000.toInt())
+        tv.setPadding(dp(20), dp(12), dp(20), dp(12))
+        tv.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        tv.setTextIsSelectable(true)
         val sv = ScrollView(this)
         sv.addView(tv)
         AlertDialog.Builder(this)
@@ -333,22 +374,27 @@ class MainActivity : Activity() {
         refresh()
     }
 
+    private fun setRow(r: SRow, ok: Boolean, okText: String, badText: String) {
+        r.label.text = if (ok) "✅ " + okText else "⚠️ " + badText
+        r.label.setTextColor(if (ok) T.OK else T.WARN)
+        r.fix.visibility = if (ok) View.GONE else View.VISIBLE
+    }
+
     private fun refresh() {
         MonitorService.start(this)
 
         val ok = needed().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-        status.text = if (ok) "✅ الصلاحيات ممنوحة" else "⚠️ الصلاحيات ناقصة"
-
-        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
-        waStatus.text = if (enabled.contains(packageName)) {
-            "✅ مراقبة مكالمات واتساب مفعّلة"
-        } else {
-            "⚠️ مراقبة مكالمات واتساب غير مفعّلة"
-        }
+        setRow(rPerm, ok, "الصلاحيات ممنوحة", "الصلاحيات ناقصة")
 
         val pm = getSystemService(PowerManager::class.java)
         val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
-        batStatus.text = if (free) "✅ الخلفية مسموحة" else "⚠️ البطارية قد توقف التطبيق"
+        setRow(rBat, free, "الخلفية مسموحة", "البطارية قد توقف التطبيق")
+
+        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
+        setRow(
+            rWa, enabled.contains(packageName),
+            "مراقبة مكالمات واتساب مفعّلة", "مراقبة واتساب غير مفعّلة (اختياري)"
+        )
     }
 
     private fun openAppInfo() {
