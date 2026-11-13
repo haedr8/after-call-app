@@ -249,12 +249,27 @@ class CallDialogActivity : Activity() {
     }
 
     private fun openWhatsApp(text: String) {
-        val url = "https://wa.me/" + Store.waNumber(number) + "?text=" + Uri.encode(text)
+        if (Store.waPref(this) == "ask" &&
+            Store.isInstalled(this, Store.WA) && Store.isInstalled(this, Store.WA_B)
+        ) {
+            AlertDialog.Builder(this)
+                .setTitle("أي واتساب؟")
+                .setItems(arrayOf("واتساب العادي", "واتساب للأعمال (Business)")) { _, w ->
+                    launchWa(text, if (w == 0) Store.WA else Store.WA_B)
+                }
+                .setNegativeButton("إلغاء", null)
+                .show()
+            return
+        }
+        launchWa(text, Store.waPackage(this))
+    }
+
+    private fun launchWa(text: String, pkg: String?) {
         try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).setPackage("com.whatsapp"))
+            startActivity(Store.waIntent(number, text, pkg))
         } catch (e: Exception) {
             try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                startActivity(Store.waIntent(number, text, null))
             } catch (e2: Exception) {
                 Toast.makeText(this, "واتساب غير موجود", Toast.LENGTH_SHORT).show()
             }
