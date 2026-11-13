@@ -1,5 +1,6 @@
 package com.aftercall.app
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.database.ContentObserver
 import android.os.Build
@@ -81,22 +83,35 @@ class MonitorService : Service() {
             Diag.log(this, "receiver error: " + e.message)
         }
 
-        try {
-            val o = object : ContentObserver(handler) {
-                override fun onChange(selfChange: Boolean) {
-                    Diag.log(applicationContext, "obs change")
-                    handler.removeCallbacks(check)
-                    handler.postDelayed(check, 800)
-                }
-            }
-            contentResolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, o)
-            observer = o
-        } catch (e: Exception) {
-            Diag.log(this, "observer error: " + e.message)
-        }
+        attach()
 
-        try {
-            if (Build.VERSION.SDK_INT >= 31) {
+        Diag.log(this, "service on")
+    }
+
+    private fun has(p: String): Boolean =
+        checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
+
+    private fun attach() {
+        if (observer == null && has(Manifest.permission.READ_CALL_LOG)) {
+            try {
+                val o = object : ContentObserver(handler) {
+                    override fun onChange(selfChange: Boolean) {
+                        Diag.log(applicationContext, "obs change")
+                        handler.removeCallbacks(check)
+                        handler.postDelayed(check, 800)
+                    }
+                }
+                contentResolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, o)
+                observer = o
+                Diag.log(this, "observer on")
+            } catch (e: Exception) {
+                Diag.log(this, "observer error: " + e.message)
+            }
+        }
+        if (telCb == null && Build.VERSION.SDK_INT >= 31 &&
+            has(Manifest.permission.READ_PHONE_STATE)
+        ) {
+            try {
                 val tm = getSystemService(TelephonyManager::class.java)
                 val c = object : TelephonyCallback(), TelephonyCallback.CallStateListener {
                     override fun onCallStateChanged(state: Int) {
@@ -105,15 +120,17 @@ class MonitorService : Service() {
                 }
                 tm.registerTelephonyCallback(mainExecutor, c)
                 telCb = c
+                Diag.log(this, "callback on")
+            } catch (e: Exception) {
+                Diag.log(this, "callback error: " + e.message)
             }
-        } catch (e: Exception) {
-            Diag.log(this, "callback error: " + e.message)
         }
-
-        Diag.log(this, "service on")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        attach()
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         try {
