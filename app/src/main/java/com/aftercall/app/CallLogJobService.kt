@@ -33,7 +33,7 @@ class CallLogJobService : JobService() {
                         .edit().putBoolean("active", false).apply()
                     val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     val exists = nm.activeNotifications.any { it.id == 1 }
-                    Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !exists)
+                    Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !exists, info.type)
                 }
             } catch (e: Exception) {
             }
