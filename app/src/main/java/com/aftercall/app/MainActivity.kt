@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private val tiktokUser = "haedr.m1"
     private val instagramUser = "haedr.m1"
     private val supportWa = "9647712384075"
+    private val zainCash = "07712384075"
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
@@ -170,6 +171,8 @@ class MainActivity : Activity() {
         col.addView(text("الإصدار " + versionLabel(), 13f, 0xFF555555.toInt()))
         col.addView(btn("🔄 فحص التحديثات") { checkUpdates(true) })
 
+        col.addView(btn("💚 دعم المطوّر (زين كاش)") { showDonate() })
+
         col.addView(text("تصميم وتطوير: حيدر محمد", 15f, 0xFF000000.toInt()))
 
         val social = LinearLayout(this).apply {
@@ -188,6 +191,31 @@ class MainActivity : Activity() {
         setContentView(scroll)
         checkUpdates(false)
         if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this)
+    }
+
+    private fun showDonate() {
+        val tv = TextView(this).apply {
+            text = "التطبيق مجاني بالكامل 🌹\n\n" +
+                "إذا أعجبك وتحب تدعم المطوّر، تقدر تتبرع (اختياري تماماً) عبر زين كاش على هذا الرقم:\n\n" +
+                zainCash + "\n\n" +
+                "شكراً لدعمك 💚"
+            textSize = 16f
+            setTextColor(0xFF000000.toInt())
+            gravity = Gravity.CENTER
+            setPadding(dp(20), dp(16), dp(20), dp(8))
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setTextIsSelectable(true)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("💚 دعم المطوّر")
+            .setView(tv)
+            .setPositiveButton("📋 نسخ الرقم") { _, _ ->
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("زين كاش", zainCash))
+                Toast.makeText(this, "تم نسخ الرقم ✅ حوّل من تطبيق زين كاش", Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
     }
 
     private fun diagText(): String {
