@@ -19,18 +19,19 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 
 class CallDialogActivity : Activity() {
 
-    private class Opt(val label: String, val action: () -> Unit)
+    private class Opt(val label: String, val outline: Boolean = false, val action: () -> Unit)
 
     private var number = ""
     private var name = ""
     private var noteView: TextView? = null
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int): Int = T.dp(this, v)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,43 +45,39 @@ class CallDialogActivity : Activity() {
             }
         }
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(16), dp(16), dp(16), dp(12))
-        }
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.VERTICAL
+        root.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        root.setPadding(dp(16), dp(16), dp(16), dp(12))
 
-        root.addView(TextView(this).apply {
-            text = when {
-                name.isNotBlank() -> name
-                number.isNotBlank() -> number
-                else -> "المكالمة"
-            }
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-            setTextColor(0xFF000000.toInt())
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-        })
+        val head = TextView(this)
+        head.text = when {
+            name.isNotBlank() -> name
+            number.isNotBlank() -> number
+            else -> "المكالمة"
+        }
+        head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+        head.setTextColor(T.INK)
+        head.typeface = Typeface.DEFAULT_BOLD
+        head.gravity = Gravity.CENTER
+        root.addView(head)
 
         if (number.isNotBlank()) {
             if (name.isNotBlank()) {
-                root.addView(TextView(this).apply {
-                    text = number
-                    textDirection = View.TEXT_DIRECTION_LTR
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                    setTextColor(0xFF444444.toInt())
-                    gravity = Gravity.CENTER
-                })
+                val sub = TextView(this)
+                sub.text = number
+                sub.textDirection = View.TEXT_DIRECTION_LTR
+                sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                sub.setTextColor(T.MUTED)
+                sub.gravity = Gravity.CENTER
+                root.addView(sub)
             }
-            val nv = TextView(this).apply {
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                setTextColor(0xFFB45309.toInt())
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                setPadding(0, dp(4), 0, dp(4))
-            }
+            val nv = T.label(this, "", 14f, T.WARN, true)
+            nv.gravity = Gravity.CENTER
+            nv.background = T.shape(this, 0xFFFEF3C7.toInt(), 12)
+            nv.setPadding(dp(12), dp(8), dp(12), dp(8))
             noteView = nv
-            root.addView(nv)
+            root.addView(nv, T.gap(this, 8))
             refreshNote()
 
             val t = Store.templates(this)
@@ -95,20 +92,21 @@ class CallDialogActivity : Activity() {
                 )
                 i += 2
             }
-            addRow(root, Opt("📍 موقعي") { sendLocation() }, Opt("📝 ملاحظة") { editNote() })
-            addRow(root, Opt("✉️ SMS") { openSms() }, Opt("📞 إعادة اتصال") { callBack() })
-            addRow(root, Opt("إلغاء") { finish() }, null)
+            addRow(root, Opt("📍 موقعي", true) { sendLocation() }, Opt("📝 ملاحظة", true) { editNote() })
+            addRow(root, Opt("✉️ SMS", true) { openSms() }, Opt("📞 إعادة اتصال", true) { callBack() })
+            addRow(root, Opt("إلغاء", true) { finish() }, null)
         } else {
-            root.addView(TextView(this).apply {
-                text = "لا يوجد رقم لهذه المكالمة. تأكد من منح الصلاحيات من داخل التطبيق."
-                setTextColor(0xFF444444.toInt())
-                gravity = Gravity.CENTER
-                setPadding(0, dp(12), 0, dp(12))
-            })
-            addRow(root, Opt("إلغاء") { finish() }, null)
+            val msg = T.label(
+                this, "لا يوجد رقم لهذه المكالمة. تأكد من منح الصلاحيات من داخل التطبيق.",
+                14f, T.MUTED
+            )
+            msg.gravity = Gravity.CENTER
+            msg.setPadding(0, dp(12), 0, dp(12))
+            root.addView(msg)
+            addRow(root, Opt("إلغاء", true) { finish() }, null)
         }
 
-        val sv = android.widget.ScrollView(this)
+        val sv = ScrollView(this)
         sv.addView(root)
         setContentView(sv)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -137,20 +135,23 @@ class CallDialogActivity : Activity() {
             .show()
     }
 
-    private fun makeBtn(o: Opt): Button = Button(this).apply {
-        text = o.label
-        isAllCaps = false
-        maxLines = 1
-        setTextColor(0xFF000000.toInt())
-        setAutoSizeTextTypeUniformWithConfiguration(11, 16, 1, TypedValue.COMPLEX_UNIT_SP)
-        setOnClickListener { o.action() }
+    private fun makeBtn(o: Opt): Button {
+        val b = if (o.outline) {
+            T.button(this, o.label, false) { o.action() }
+        } else {
+            T.tonal(this, o.label) { o.action() }
+        }
+        if (o.outline) {
+            b.maxLines = 1
+            b.setAutoSizeTextTypeUniformWithConfiguration(11, 15, 1, TypedValue.COMPLEX_UNIT_SP)
+        }
+        return b
     }
 
     private fun addRow(root: LinearLayout, a: Opt, b: Opt?) {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
+        row.layoutDirection = View.LAYOUT_DIRECTION_RTL
         fun lp(): LinearLayout.LayoutParams {
             val p = LinearLayout.LayoutParams(0, dp(52), 1f)
             p.setMargins(dp(4), dp(4), dp(4), dp(4))
