@@ -9,7 +9,10 @@ import android.content.BroadcastReceiver
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -29,7 +32,7 @@ object Diag {
     }
 }
 
-class CallInfo(val number: String, val name: String, val date: Long)
+class CallInfo(val number: String, val name: String, val date: Long, val type: Int = 0)
 
 fun readLastCall(ctx: Context, start: Long): CallInfo? {
     if (ctx.checkSelfPermission(Manifest.permission.READ_CALL_LOG) !=
@@ -42,14 +45,17 @@ fun readLastCall(ctx: Context, start: Long): CallInfo? {
         }
         ctx.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
-            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.DATE),
+            arrayOf(
+                CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME,
+                CallLog.Calls.DATE, CallLog.Calls.TYPE
+            ),
             args,
             null
         )?.use { c ->
             if (c.moveToFirst()) {
                 val date = c.getLong(2)
                 if (date >= start - 5000) {
-                    CallInfo(c.getString(0) ?: "", c.getString(1) ?: "", date)
+                    CallInfo(c.getString(0) ?: "", c.getString(1) ?: "", date, c.getInt(3))
                 } else null
             } else null
         }
@@ -73,8 +79,10 @@ object CallGate {
 object Notifier {
     fun show(
         ctx: Context, id: Int, title: String, number: String, name: String,
-        alert: Boolean = true
+        alert: Boolean = true, type: Int = 0
     ) {
+        if (type != 0 && !Store.allows(ctx, type)) return
+        val missed = type == 3 || type == 5
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel("after_call") == null) {
             nm.createNotificationChannel(
@@ -87,31 +95,59 @@ object Notifier {
             putExtra("name", name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-        val pi = PendingIntent.getActivity(
-            ctx, id, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val pi = PendingIntent.getActivity(ctx, id, i, flags)
         val text = when {
             name.isNotBlank() && number.isNotBlank() -> "$name - $number"
             name.isNotBlank() -> name
             number.isNotBlank() -> number
             else -> "اضغط لعرض الخيارات"
         }
-        val n = Notification.Builder(ctx, "after_call")
+        val b = Notification.Builder(ctx, "after_call")
             .setSmallIcon(R.drawable.ic_notif)
-            .setContentTitle(title)
+            .setContentTitle(if (missed) "مكالمة فائتة" else title)
             .setContentText(text)
             .setContentIntent(pi)
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
-            .build()
+        if (missed && number.isNotBlank()) {
+            val dial = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val wa = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://wa.me/" + Store.waNumber(number) + "?text=" + Uri.encode("السلام عليكم"))
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val icon = Icon.createWithResource(ctx, R.drawable.ic_notif)
+            b.addAction(
+                Notification.Action.Builder(
+                    icon, "اتصال", PendingIntent.getActivity(ctx, id + 100, dial, flags)
+                ).build()
+            )
+            b.addAction(
+                Notification.Action.Builder(
+                    icon, "واتساب", PendingIntent.getActivity(ctx, id + 200, wa, flags)
+                ).build()
+            )
+        }
         try {
-            nm.notify(id, n)
+            nm.notify(id, b.build())
         } catch (e: SecurityException) {
         }
+        Bubble.show(ctx, number, name)
     }
 }
 
 class CallReceiver : BroadcastReceiver() {
+
+    private fun begin(p: SharedPreferences) {
+        if (!p.getBoolean("active", false)) {
+            p.edit().putBoolean("active", true)
+                .putLong("start", System.currentTimeMillis())
+                .putString("last_number", "")
+                .putString("kind", "")
+                .apply()
+        }
+    }
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
@@ -121,13 +157,17 @@ class CallReceiver : BroadcastReceiver() {
         @Suppress("DEPRECATION")
         val num = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: ""
         when (state) {
-            TelephonyManager.EXTRA_STATE_RINGING,
-            TelephonyManager.EXTRA_STATE_OFFHOOK -> {
-                if (!p.getBoolean("active", false)) {
-                    p.edit().putBoolean("active", true)
-                        .putLong("start", System.currentTimeMillis())
-                        .putString("last_number", "").apply()
+            TelephonyManager.EXTRA_STATE_RINGING -> {
+                begin(p)
+                if ((p.getString("kind", "") ?: "").isEmpty()) {
+                    p.edit().putString("kind", "ring").apply()
                 }
+                if (num.isNotBlank()) p.edit().putString("last_number", num).apply()
+            }
+            TelephonyManager.EXTRA_STATE_OFFHOOK -> {
+                begin(p)
+                val k = p.getString("kind", "") ?: ""
+                p.edit().putString("kind", if (k == "ring" || k == "in") "in" else "out").apply()
                 if (num.isNotBlank()) p.edit().putString("last_number", num).apply()
             }
             TelephonyManager.EXTRA_STATE_IDLE -> {
@@ -137,12 +177,17 @@ class CallReceiver : BroadcastReceiver() {
                 val wasActive = p.getBoolean("active", false)
                 val since = if (wasActive) p.getLong("start", 0L) else System.currentTimeMillis() - 20000
                 val known = p.getString("last_number", "") ?: ""
-                p.edit().putBoolean("active", false).apply()
+                val type = when (p.getString("kind", "") ?: "") {
+                    "ring" -> 3
+                    "in" -> 1
+                    "out" -> 2
+                    else -> 0
+                }
+                p.edit().putBoolean("active", false).putString("kind", "").apply()
                 val app = context.applicationContext
                 Diag.log(app, "IDLE wasActive=$wasActive")
                 if (wasActive) {
-                    // إشعار فوري بدون انتظار
-                    Notifier.show(app, 1, "انتهت المكالمة", known, "")
+                    Notifier.show(app, 1, "انتهت المكالمة", known, "", true, type)
                 }
                 val pending = goAsync()
                 poll(app, wasActive, since, pending, 0)
@@ -158,7 +203,7 @@ class CallReceiver : BroadcastReceiver() {
         if (attempt == 0 || attempt == 12) Diag.log(ctx, "poll#$attempt info=${info?.date}")
         if (info != null && CallGate.claim(ctx, info.date)) {
             Diag.log(ctx, "poll claimed -> notify")
-            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shownBefore)
+            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shownBefore, info.type)
             pending.finish()
         } else if (attempt >= 12) {
             pending.finish()
