@@ -1,6 +1,8 @@
 package com.aftercall.app
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.view.View
 import android.view.WindowInsets
@@ -31,6 +33,9 @@ object Ui {
 }
 
 object Store {
+    const val WA = "com.whatsapp"
+    const val WA_B = "com.whatsapp.w4b"
+
     private fun sp(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private fun notes(c: Context) = c.getSharedPreferences("notes", Context.MODE_PRIVATE)
 
@@ -80,6 +85,38 @@ object Store {
         else -> true
     }
 
+    // ---- اختيار واتساب (العادي / للأعمال) ----
+    fun waPref(c: Context): String = sp(c).getString("wa", "auto") ?: "auto"
+
+    fun setWaPref(c: Context, v: String) {
+        sp(c).edit().putString("wa", v).apply()
+    }
+
+    fun isInstalled(c: Context, pkg: String): Boolean {
+        return try {
+            c.packageManager.getPackageInfo(pkg, 0)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun waPackage(c: Context): String? = when (waPref(c)) {
+        "regular" -> WA
+        "business" -> WA_B
+        else -> if (isInstalled(c, WA)) WA else if (isInstalled(c, WA_B)) WA_B else null
+    }
+
+    fun waIntent(number: String, text: String, pkg: String?): Intent {
+        val i = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://wa.me/" + waNumber(number) + "?text=" + Uri.encode(text))
+        )
+        if (pkg != null) i.setPackage(pkg)
+        return i
+    }
+
+    // ---- ملاحظات الأرقام ----
     private fun key(number: String): String {
         val d = number.filter { it.isDigit() }
         return if (d.length > 9) d.takeLast(9) else d
@@ -121,6 +158,7 @@ object Store {
         for ((k, v) in notes(c).all) n.put(k, v.toString())
         o.put("notes", n)
         for (k in boolKeys) o.put(k, getBool(c, k, k != "bubble"))
+        o.put("wa", waPref(c))
         return "حولني-نسخة:" + o.toString()
     }
 
@@ -145,6 +183,7 @@ object Store {
             for (k in boolKeys) {
                 if (o.has(k)) setBool(c, k, o.getBoolean(k))
             }
+            if (o.has("wa")) setWaPref(c, o.getString("wa"))
             true
         } catch (e: Exception) {
             false
