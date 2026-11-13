@@ -21,6 +21,8 @@ import android.widget.Toast
 
 class SettingsActivity : Activity() {
 
+    private var waLabel: TextView? = null
+
     private fun dp(v: Int): Int = T.dp(this, v)
 
     private fun toast(s: String) {
@@ -46,6 +48,40 @@ class SettingsActivity : Activity() {
         val c = T.card(this)
         col.addView(c, T.gap(this, 8))
         return c
+    }
+
+    private fun waName(v: String): String = when (v) {
+        "regular" -> "واتساب العادي"
+        "business" -> "واتساب للأعمال (Business)"
+        "ask" -> "اسأل كل مرة"
+        else -> "تلقائي"
+    }
+
+    private fun chooseWa() {
+        val vals = arrayOf("auto", "regular", "business", "ask")
+        val names = arrayOf(
+            "تلقائي (العادي إذا موجود، وإلا Business)",
+            "واتساب العادي",
+            "واتساب للأعمال (Business)",
+            "اسأل كل مرة"
+        )
+        var cur = vals.indexOf(Store.waPref(this))
+        if (cur < 0) cur = 0
+        AlertDialog.Builder(this)
+            .setTitle("أي واتساب تستخدم للرسائل؟")
+            .setSingleChoiceItems(names, cur) { d, w ->
+                Store.setWaPref(this, vals[w])
+                waLabel?.text = "المختار: " + waName(vals[w])
+                if (vals[w] == "business" && !Store.isInstalled(this, Store.WA_B)) {
+                    toast("واتساب للأعمال غير مثبت على هذا الهاتف")
+                }
+                if (vals[w] == "regular" && !Store.isInstalled(this, Store.WA)) {
+                    toast("واتساب العادي غير مثبت على هذا الهاتف")
+                }
+                d.dismiss()
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +125,12 @@ class SettingsActivity : Activity() {
                 }
             }
         })
+
+        val w = section(col, "تطبيق واتساب")
+        val wl = T.label(this, "المختار: " + waName(Store.waPref(this)), 14f, T.MUTED)
+        waLabel = wl
+        w.addView(wl)
+        w.addView(T.button(this, "📱 اختيار واتساب (العادي / للأعمال)", false) { chooseWa() }, T.gap(this, 10))
 
         val c = section(col, "الرسائل")
         c.addView(T.button(this, "✏️ تعديل رسائل الأزرار", true) { editTemplates() })
