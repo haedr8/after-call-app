@@ -113,10 +113,8 @@ object Notifier {
         if (missed && number.isNotBlank()) {
             val dial = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            val wa = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://wa.me/" + Store.waNumber(number) + "?text=" + Uri.encode("السلام عليكم"))
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val wa = Store.waIntent(number, "السلام عليكم", Store.waPackage(ctx))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             val icon = Icon.createWithResource(ctx, R.drawable.ic_notif)
             b.addAction(
                 Notification.Action.Builder(
