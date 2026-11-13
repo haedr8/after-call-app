@@ -37,7 +37,7 @@ class MonitorService : Service() {
                 false
             }
             Diag.log(ctx, "obs claimed -> notify")
-            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shown)
+            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shown, info.type)
             getSharedPreferences("aftercall", Context.MODE_PRIVATE)
                 .edit().putBoolean("active", false).apply()
         }
@@ -141,6 +141,7 @@ class MonitorService : Service() {
 
     companion object {
         fun start(ctx: Context) {
+            if (!Store.getBool(ctx, "service", true)) return
             try {
                 ctx.startForegroundService(Intent(ctx, MonitorService::class.java))
             } catch (e: Exception) {
