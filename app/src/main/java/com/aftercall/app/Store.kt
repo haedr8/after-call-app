@@ -107,10 +107,10 @@ object Store {
         else -> if (isInstalled(c, WA)) WA else if (isInstalled(c, WA_B)) WA_B else null
     }
 
-    fun waIntent(number: String, text: String, pkg: String?): Intent {
+    fun waIntent(c: Context, number: String, text: String, pkg: String?): Intent {
         val i = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("https://wa.me/" + waNumber(number) + "?text=" + Uri.encode(text))
+            Uri.parse("https://wa.me/" + waNumber(c, number) + "?text=" + Uri.encode(text))
         )
         if (pkg != null) i.setPackage(pkg)
         return i
@@ -136,15 +136,30 @@ object Store {
         ed.apply()
     }
 
-    fun waNumber(number: String): String {
+    // دولة الشريحة (مثل iq أو eg) لتحويل الأرقام المحلية للصيغة الدولية
+    private fun countryIso(c: Context): String {
+        return try {
+            val tm = c.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            val s = tm.simCountryIso
+            val n = tm.networkCountryIso
+            val iso = if (!s.isNullOrEmpty()) s else n
+            if (iso.isNullOrEmpty()) "IQ" else iso.uppercase()
+        } catch (e: Exception) {
+            "IQ"
+        }
+    }
+
+    fun waNumber(c: Context, number: String): String {
         val raw = number.trim()
         val digits = raw.filter { it.isDigit() }
-        return when {
-            raw.startsWith("+") -> digits
-            digits.startsWith("00") -> digits.drop(2)
-            digits.startsWith("0") -> "964" + digits.drop(1)
-            else -> digits
+        if (raw.startsWith("+")) return digits
+        if (digits.startsWith("00")) return digits.drop(2)
+        try {
+            val e164 = android.telephony.PhoneNumberUtils.formatNumberToE164(raw, countryIso(c))
+            if (!e164.isNullOrEmpty()) return e164.filter { it.isDigit() }
+        } catch (e: Exception) {
         }
+        return if (digits.startsWith("0")) "964" + digits.drop(1) else digits
     }
 
     private val boolKeys = listOf("in", "out", "missed", "service", "bubble")

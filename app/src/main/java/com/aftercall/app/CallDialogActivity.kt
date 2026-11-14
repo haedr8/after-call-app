@@ -266,10 +266,10 @@ class CallDialogActivity : Activity() {
 
     private fun launchWa(text: String, pkg: String?) {
         try {
-            startActivity(Store.waIntent(number, text, pkg))
+            startActivity(Store.waIntent(this, number, text, pkg))
         } catch (e: Exception) {
             try {
-                startActivity(Store.waIntent(number, text, null))
+                startActivity(Store.waIntent(this, number, text, null))
             } catch (e2: Exception) {
                 Toast.makeText(this, "واتساب غير موجود", Toast.LENGTH_SHORT).show()
             }
