@@ -2,22 +2,28 @@ package com.aftercall.app
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.content.pm.Signature
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 class UpdateInfo(val code: Long, val tag: String, val notes: String, val url: String)
 
 object Updater {
 
     private const val API = "https://api.github.com/repos/haedr8/after-call-app/releases/latest"
+    private const val TRUSTED = "https://github.com/haedr8/after-call-app/releases/download/"
     private val main = Handler(Looper.getMainLooper())
 
     fun currentCode(a: Activity): Long {
@@ -60,7 +66,7 @@ object Updater {
                             }
                         }
                     }
-                    if (code > currentCode(a) && url.isNotEmpty()) {
+                    if (code > currentCode(a) && url.startsWith(TRUSTED)) {
                         info = UpdateInfo(code, tag, j.optString("body"), url)
                     }
                 } else {
@@ -93,6 +99,7 @@ object Updater {
         Thread {
             var out: File? = null
             try {
+                if (!info.url.startsWith(TRUSTED)) throw SecurityException("untrusted url")
                 val dir = File(a.cacheDir, "updates")
                 dir.mkdirs()
                 dir.listFiles()?.forEach { it.delete() }
@@ -132,7 +139,49 @@ object Updater {
         }.start()
     }
 
+    private fun sigs(pi: PackageInfo): Set<String> {
+        val out = HashSet<String>()
+        val arr: Array<Signature>? = if (Build.VERSION.SDK_INT >= 28) {
+            pi.signingInfo?.apkContentsSigners
+        } else {
+            @Suppress("DEPRECATION")
+            pi.signatures
+        }
+        if (arr != null) {
+            for (s in arr) {
+                val h = MessageDigest.getInstance("SHA-256").digest(s.toByteArray())
+                out.add(h.joinToString("") { "%02x".format(it) })
+            }
+        }
+        return out
+    }
+
+    // يرفض الملف فقط إذا ثبت أنه لتطبيق آخر أو بتوقيع مختلف؛ وأندرويد يتحقق مرة ثانية عند التثبيت
+    fun verify(a: Activity, f: File): Boolean {
+        return try {
+            val pm = a.packageManager
+            val flag = if (Build.VERSION.SDK_INT >= 28) {
+                PackageManager.GET_SIGNING_CERTIFICATES
+            } else {
+                @Suppress("DEPRECATION")
+                PackageManager.GET_SIGNATURES
+            }
+            val arch = pm.getPackageArchiveInfo(f.absolutePath, flag) ?: return false
+            if (arch.packageName != a.packageName) return false
+            val mine = sigs(pm.getPackageInfo(a.packageName, flag))
+            val theirs = sigs(arch)
+            if (mine.isEmpty() || theirs.isEmpty()) true else mine.intersect(theirs).isNotEmpty()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun install(a: Activity, f: File) {
+        if (!verify(a, f)) {
+            f.delete()
+            Toast.makeText(a, "ملف التحديث غير موثوق، تم إلغاؤه", Toast.LENGTH_LONG).show()
+            return
+        }
         try {
             val uri = FileProvider.getUriForFile(a, a.packageName + ".fileprovider", f)
             val i = Intent(Intent.ACTION_VIEW)

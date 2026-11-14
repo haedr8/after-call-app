@@ -3,11 +3,14 @@ package com.aftercall.app
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -138,7 +141,13 @@ class SettingsActivity : Activity() {
         val d = section(col, "النسخ الاحتياطي")
         d.addView(T.button(this, "📤 نسخ احتياطي (نسخ للحافظة)", false) {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("حولني", Store.backup(this)))
+            val clip = ClipData.newPlainText("حولني", Store.backup(this))
+            if (Build.VERSION.SDK_INT >= 33) {
+                val ex = PersistableBundle()
+                ex.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                clip.description.extras = ex
+            }
+            cm.setPrimaryClip(clip)
             toast("تم النسخ ✅ الصقه بمكان آمن (مثل ملاحظات واتساب)")
         })
         d.addView(T.button(this, "📥 استعادة (من الحافظة)", false) {
