@@ -12,6 +12,8 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -84,10 +86,23 @@ object Notifier {
         if (type != 0 && !Store.allows(ctx, type)) return
         val missed = type == 3 || type == 5
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel("after_call") == null) {
-            nm.createNotificationChannel(
-                NotificationChannel("after_call", "حولني", NotificationManager.IMPORTANCE_HIGH)
+        if (nm.getNotificationChannel("after_call2") == null) {
+            val ch = NotificationChannel(
+                "after_call2", "انتهاء المكالمة", NotificationManager.IMPORTANCE_HIGH
             )
+            ch.setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            ch.enableVibration(true)
+            nm.createNotificationChannel(ch)
+            try {
+                nm.deleteNotificationChannel("after_call")
+            } catch (e: Exception) {
+            }
         }
         if (alert) nm.cancel(id)
         val i = Intent(ctx, CallDialogActivity::class.java).apply {
@@ -103,7 +118,7 @@ object Notifier {
             number.isNotBlank() -> number
             else -> "اضغط لعرض الخيارات"
         }
-        val b = Notification.Builder(ctx, "after_call")
+        val b = Notification.Builder(ctx, "after_call2")
             .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle(if (missed) "مكالمة فائتة" else title)
             .setContentText(text)
