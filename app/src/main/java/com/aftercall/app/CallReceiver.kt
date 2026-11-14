@@ -13,6 +13,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
@@ -79,6 +80,27 @@ object CallGate {
 }
 
 object Notifier {
+    private var rt: android.media.Ringtone? = null
+
+    private fun playSound(ctx: Context) {
+        try {
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            if (am.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+            rt?.stop()
+            val r = RingtoneManager.getRingtone(
+                ctx, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            )
+            r.audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            r.play()
+            rt = r
+        } catch (e: Exception) {
+            Diag.log(ctx, "sound error: " + e.message)
+        }
+    }
+
     fun show(
         ctx: Context, id: Int, title: String, number: String, name: String,
         alert: Boolean = true, type: Int = 0
@@ -86,21 +108,16 @@ object Notifier {
         if (type != 0 && !Store.allows(ctx, type)) return
         val missed = type == 3 || type == 5
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel("after_call2") == null) {
+        if (nm.getNotificationChannel("after_call3") == null) {
             val ch = NotificationChannel(
-                "after_call2", "انتهاء المكالمة", NotificationManager.IMPORTANCE_HIGH
+                "after_call3", "انتهاء المكالمة", NotificationManager.IMPORTANCE_HIGH
             )
-            ch.setSound(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
+            ch.setSound(null, null)
             ch.enableVibration(true)
             nm.createNotificationChannel(ch)
             try {
                 nm.deleteNotificationChannel("after_call")
+                nm.deleteNotificationChannel("after_call2")
             } catch (e: Exception) {
             }
         }
@@ -118,7 +135,7 @@ object Notifier {
             number.isNotBlank() -> number
             else -> "اضغط لعرض الخيارات"
         }
-        val b = Notification.Builder(ctx, "after_call2")
+        val b = Notification.Builder(ctx, "after_call3")
             .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle(if (missed) "مكالمة فائتة" else title)
             .setContentText(text)
@@ -146,6 +163,7 @@ object Notifier {
             nm.notify(id, b.build())
         } catch (e: SecurityException) {
         }
+        if (alert) playSound(ctx)
         Bubble.show(ctx, number, name)
     }
 }

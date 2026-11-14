@@ -38,7 +38,7 @@ class CallDialogActivity : Activity() {
         number = intent.getStringExtra("number") ?: ""
         name = intent.getStringExtra("name") ?: ""
         if (number.isBlank()) {
-            val last = readLastCall(this, 0L)
+            val last = readLastCall(this, System.currentTimeMillis() - 120000L)
             if (last != null) {
                 number = last.number
                 name = last.name
