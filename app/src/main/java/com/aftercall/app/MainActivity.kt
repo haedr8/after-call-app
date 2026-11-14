@@ -31,7 +31,6 @@ class MainActivity : Activity() {
 
     private lateinit var rPerm: SRow
     private lateinit var rBat: SRow
-    private lateinit var rWa: SRow
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
@@ -145,13 +144,6 @@ class MainActivity : Activity() {
         st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
         rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
         rBat = statusRow(st, "سماح") { batterySettings() }
-        rWa = statusRow(st, "تفعيل") { listenerSettings() }
-        if (Build.VERSION.SDK_INT >= 33) {
-            val help = T.label(this, "الخيار رمادي ولا يمكن تفعيله؟ اضغط هنا", 12f, T.TEAL)
-            help.setPadding(0, dp(10), 0, 0)
-            help.setOnClickListener { showRestrictedHelp() }
-            st.addView(help)
-        }
         col.addView(st, T.gap(this, 14))
 
         // ---- الأدوات ----
@@ -228,14 +220,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun listenerSettings() {
-        try {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        } catch (e: Exception) {
-            openAppInfo()
-        }
-    }
-
     private fun showDonate() {
         val tv = TextView(this)
         tv.text = "التطبيق مجاني بالكامل 🌹\n\n" +
@@ -272,8 +256,6 @@ class MainActivity : Activity() {
             val ok = checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
             sb.append(if (ok) "✅ " else "❌ ").append(p.substringAfterLast('.')).append("\n")
         }
-        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
-        sb.append(if (enabled.contains(packageName)) "✅" else "❌").append(" مراقبة واتساب\n")
         val pm = getSystemService(PowerManager::class.java)
         val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
         sb.append(if (free) "✅" else "❌").append(" الخلفية (البطارية)\n")
@@ -389,12 +371,6 @@ class MainActivity : Activity() {
         val pm = getSystemService(PowerManager::class.java)
         val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
         setRow(rBat, free, "الخلفية مسموحة", "البطارية قد توقف التطبيق")
-
-        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
-        setRow(
-            rWa, enabled.contains(packageName),
-            "مراقبة مكالمات واتساب مفعّلة", "مراقبة واتساب غير مفعّلة (اختياري)"
-        )
     }
 
     private fun openAppInfo() {
@@ -436,21 +412,6 @@ class MainActivity : Activity() {
             }
         }
         openUrl("https://www.tiktok.com/@$tiktokUser")
-    }
-
-    private fun showRestrictedHelp() {
-        AlertDialog.Builder(this)
-            .setTitle("السماح بالإعدادات المقيّدة")
-            .setMessage(
-                "أندرويد يمنع التطبيقات المثبتة من خارج المتجر من مراقبة الإشعارات.\n\n" +
-                    "1) اضغط «فتح معلومات التطبيق»\n" +
-                    "2) اضغط النقاط الثلاث ⋮ أعلى الشاشة\n" +
-                    "3) اختر «السماح بالإعدادات المقيّدة»\n" +
-                    "4) ارجع وفعّل «مراقبة واتساب»"
-            )
-            .setPositiveButton("فتح معلومات التطبيق") { _, _ -> openAppInfo() }
-            .setNegativeButton("إغلاق", null)
-            .show()
     }
 
     private fun showOemHelp() {
