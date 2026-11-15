@@ -173,51 +173,111 @@ class SettingsActivity : Activity() {
         setContentView(sv)
     }
 
+    // قائمة الأزرار: كل زر يُعدَّل لحاله ويُحفظ فوراً، والاستعادة الافتراضية تحتاج تأكيداً
     private fun editTemplates() {
         val cur = Store.templates(this)
+        val items = ArrayList<String>()
+        for (t in cur) items.add(t.label + "\n" + t.text)
+        items.add("➕ إضافة زر جديد")
+        items.add("↩️ استعادة الأزرار الافتراضية")
+        AlertDialog.Builder(this)
+            .setTitle("أزرار الرسائل (اضغط على زر لتعديله)")
+            .setItems(items.toTypedArray()) { _, w ->
+                when {
+                    w < cur.size -> editOne(w)
+                    w == cur.size -> editOne(-1)
+                    else -> confirmReset()
+                }
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun editOne(idx: Int) {
+        val cur = Store.templates(this)
+        val old: Tpl? = if (idx >= 0 && idx < cur.size) cur[idx] else null
         val box = LinearLayout(this)
         box.orientation = LinearLayout.VERTICAL
         box.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        box.setPadding(dp(16), dp(8), dp(16), dp(8))
-        val labels = ArrayList<EditText>()
-        val texts = ArrayList<EditText>()
-        for (i in 0 until 8) {
-            val l = EditText(this)
-            l.hint = "اسم الزر (مثال: 📍 لوكيشن)"
-            l.setSingleLine()
-            l.setText(if (i < cur.size) cur[i].label else "")
-            val t = EditText(this)
-            t.hint = "نص الرسالة"
-            t.setText(if (i < cur.size) cur[i].text else "")
-            box.addView(l)
-            box.addView(t)
-            labels.add(l)
-            texts.add(t)
+        box.setPadding(dp(20), dp(10), dp(20), dp(4))
+        val l = EditText(this)
+        l.hint = "اسم الزر (مثال: 📍 لوكيشن)"
+        l.setSingleLine()
+        l.setText(old?.label ?: "")
+        val t = EditText(this)
+        t.hint = "نص الرسالة"
+        t.minLines = 2
+        t.setText(old?.text ?: "")
+        box.addView(l)
+        box.addView(t)
+        val b = AlertDialog.Builder(this)
+            .setTitle(if (old == null) "زر جديد" else "تعديل الزر")
+            .setView(box)
+            .setCancelable(false)
+            .setPositiveButton("حفظ", null)
+            .setNegativeButton("إلغاء") { _, _ -> editTemplates() }
+        if (old != null) {
+            b.setNeutralButton("🗑 حذف") { _, _ -> confirmDelete(idx) }
         }
-        val scroll = ScrollView(this)
-        scroll.addView(box)
+        val d = b.create()
+        d.show()
+        d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val x = l.text.toString().trim()
+            val y = t.text.toString().trim()
+            if (x.isEmpty() || y.isEmpty()) {
+                toast("اكتب اسم الزر ونص الرسالة")
+                return@setOnClickListener
+            }
+            val list = ArrayList(Store.templates(this))
+            if (old != null && idx < list.size) {
+                list[idx] = Tpl(x, y)
+            } else {
+                if (list.size >= 12) {
+                    toast("الحد الأقصى 12 زراً")
+                    return@setOnClickListener
+                }
+                list.add(Tpl(x, y))
+            }
+            Store.saveTemplates(this, list)
+            d.dismiss()
+            toast("تم الحفظ ✅")
+            editTemplates()
+        }
+    }
+
+    private fun confirmDelete(idx: Int) {
+        val list = ArrayList(Store.templates(this))
+        if (idx < 0 || idx >= list.size) {
+            editTemplates()
+            return
+        }
         AlertDialog.Builder(this)
-            .setTitle("رسائل الأزرار (اترك الفارغ لحذفه)")
-            .setView(scroll)
-            .setPositiveButton("حفظ") { _, _ ->
-                val out = ArrayList<Tpl>()
-                for (i in 0 until 8) {
-                    val x = labels[i].text.toString().trim()
-                    val y = texts[i].text.toString().trim()
-                    if (x.isNotEmpty() && y.isNotEmpty()) out.add(Tpl(x, y))
-                }
-                if (out.isEmpty()) {
-                    toast("لازم زر واحد على الأقل")
+            .setTitle("حذف هذا الزر؟")
+            .setMessage(list[idx].label)
+            .setPositiveButton("حذف") { _, _ ->
+                if (list.size <= 1) {
+                    toast("لازم يبقى زر واحد على الأقل")
                 } else {
-                    Store.saveTemplates(this, out)
-                    toast("تم الحفظ ✅")
+                    list.removeAt(idx)
+                    Store.saveTemplates(this, list)
+                    toast("تم الحذف")
                 }
+                editTemplates()
             }
-            .setNeutralButton("الافتراضي") { _, _ ->
+            .setNegativeButton("إلغاء") { _, _ -> editTemplates() }
+            .show()
+    }
+
+    private fun confirmReset() {
+        AlertDialog.Builder(this)
+            .setTitle("استعادة الأزرار الافتراضية؟")
+            .setMessage("كل تعديلاتك على الأزرار راح تنحذف.")
+            .setPositiveButton("استعادة") { _, _ ->
                 Store.resetTemplates(this)
-                toast("رجعت الرسائل الافتراضية ✅")
+                toast("رجعت الأزرار الافتراضية ✅")
+                editTemplates()
             }
-            .setNegativeButton("إلغاء", null)
+            .setNegativeButton("إلغاء") { _, _ -> editTemplates() }
             .show()
     }
 }
