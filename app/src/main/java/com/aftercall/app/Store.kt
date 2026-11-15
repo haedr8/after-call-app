@@ -108,10 +108,9 @@ object Store {
     }
 
     fun waIntent(c: Context, number: String, text: String, pkg: String?): Intent {
-        val i = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("https://wa.me/" + waNumber(c, number) + "?text=" + Uri.encode(text))
-        )
+        val url = "https://wa.me/" + waNumber(c, number) +
+            (if (text.isBlank()) "" else "?text=" + Uri.encode(text))
+        val i = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         if (pkg != null) i.setPackage(pkg)
         return i
     }

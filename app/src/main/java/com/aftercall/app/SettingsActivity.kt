@@ -205,7 +205,7 @@ class SettingsActivity : Activity() {
         l.setSingleLine()
         l.setText(old?.label ?: "")
         val t = EditText(this)
-        t.hint = "نص الرسالة"
+        t.hint = "نص الرسالة (اتركه فارغاً ليفتح المحادثة فقط)"
         t.minLines = 2
         t.setText(old?.text ?: "")
         box.addView(l)
@@ -224,8 +224,8 @@ class SettingsActivity : Activity() {
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val x = l.text.toString().trim()
             val y = t.text.toString().trim()
-            if (x.isEmpty() || y.isEmpty()) {
-                toast("اكتب اسم الزر ونص الرسالة")
+            if (x.isEmpty()) {
+                toast("اكتب اسم الزر")
                 return@setOnClickListener
             }
             val list = ArrayList(Store.templates(this))
