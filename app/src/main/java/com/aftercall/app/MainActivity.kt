@@ -210,14 +210,7 @@ class MainActivity : Activity() {
     }
 
     private fun batterySettings() {
-        try {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-            Toast.makeText(
-                this, "اختر «كل التطبيقات» ثم حولني ثم «عدم التحسين»", Toast.LENGTH_LONG
-            ).show()
-        } catch (e: Exception) {
-            openAppInfo()
-        }
+        Oem.requestBattery(this)
     }
 
     private fun showDonate() {

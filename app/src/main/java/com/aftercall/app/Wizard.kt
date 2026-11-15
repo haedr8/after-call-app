@@ -39,6 +39,31 @@ object Oem {
         }
     }
 
+    // نافذة مباشرة «السماح بالعمل بالخلفية»، وإن لم تتوفر نفتح قائمة التطبيقات
+    fun requestBattery(a: Activity) {
+        try {
+            a.startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + a.packageName))
+            )
+            return
+        } catch (e: Exception) {
+        }
+        try {
+            a.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            android.widget.Toast.makeText(
+                a, "اختر «كل التطبيقات» ثم حولني ثم «عدم التحسين»", android.widget.Toast.LENGTH_LONG
+            ).show()
+            return
+        } catch (e: Exception) {
+        }
+        try {
+            a.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + a.packageName))
+            )
+        } catch (e: Exception) {
+        }
+    }
+
     fun openAutostart(a: Activity) {
         val tries = listOf(
             "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
@@ -100,9 +125,9 @@ object Wizard {
         ) { a -> perms(a) },
         Step(
             "البطارية",
-            "اضغط «فتح»، ثم اختر «كل التطبيقات» ← حولني ← «عدم التحسين». هذا يمنع الهاتف من إيقاف التطبيق.",
-            "فتح"
-        ) { a -> open(a, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
+            "اضغط «السماح» ثم وافق على «السماح بالعمل بالخلفية». هذا يمنع الهاتف (خصوصاً تكنو وإنفينكس) من إيقاف التطبيق وضياع الإشعار.",
+            "السماح"
+        ) { a -> Oem.requestBattery(a) },
         Step(
             "التشغيل التلقائي",
             Oem.tip(),
