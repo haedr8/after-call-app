@@ -128,11 +128,23 @@ class MonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent == null) Diag.log(this, "restart by system (service was killed)")
         attach()
         return START_STICKY
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Diag.log(this, "task removed (swiped from recents)")
+        super.onTaskRemoved(rootIntent)
+    }
+
+    override fun onTrimMemory(level: Int) {
+        if (level >= TRIM_MEMORY_RUNNING_LOW) Diag.log(this, "low memory level=$level")
+        super.onTrimMemory(level)
+    }
+
     override fun onDestroy() {
+        Diag.log(this, "service destroyed")
         try {
             receiver?.let { unregisterReceiver(it) }
         } catch (e: Exception) {
