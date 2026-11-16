@@ -217,11 +217,10 @@ class CallReceiver : BroadcastReceiver() {
                 p.edit().putBoolean("active", false).putString("kind", "").apply()
                 val app = context.applicationContext
                 Diag.log(app, "IDLE wasActive=$wasActive")
-                if (wasActive) {
-                    Notifier.show(app, 1, "انتهت المكالمة", known, "", true, type)
-                }
+                // لا نُظهر الإشعار إلا إذا ظهرت المكالمة فعلاً بسجل مكالمات الهاتف
+                // (مكالمات واتساب وغيرها لا تُسجَّل هناك فلا يطلع لها شي)
                 val pending = goAsync()
-                poll(app, wasActive, since, pending, 0)
+                poll(app, false, since, pending, 0)
             }
         }
     }
@@ -231,12 +230,12 @@ class CallReceiver : BroadcastReceiver() {
         pending: BroadcastReceiver.PendingResult, attempt: Int
     ) {
         val info = readLastCall(ctx, since)
-        if (attempt == 0 || attempt == 12) Diag.log(ctx, "poll#$attempt info=${info?.date}")
+        if (attempt == 0 || attempt == 24) Diag.log(ctx, "poll#$attempt info=${info?.date}")
         if (info != null && CallGate.claim(ctx, info.date)) {
             Diag.log(ctx, "poll claimed -> notify")
             Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shownBefore, info.type)
             pending.finish()
-        } else if (attempt >= 12) {
+        } else if (attempt >= 24) {
             pending.finish()
         } else {
             Handler(Looper.getMainLooper()).postDelayed({
