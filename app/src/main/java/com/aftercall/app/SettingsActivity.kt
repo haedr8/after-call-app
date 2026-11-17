@@ -106,29 +106,6 @@ class SettingsActivity : Activity() {
         a.addView(sw("المكالمات الصادرة", "out", true, null))
         a.addView(sw("المكالمات الفائتة (مع أزرار اتصال وواتساب)", "missed", true, null))
 
-        val b = section(col, "المراقبة")
-        b.addView(sw("الخدمة الدائمة (موصى بها لتكنو وغيرها)", "service", true) { v ->
-            try {
-                if (v) {
-                    MonitorService.start(this)
-                } else {
-                    stopService(Intent(this, MonitorService::class.java))
-                }
-            } catch (e: Exception) {
-            }
-        })
-        b.addView(sw("نافذة عائمة بعد المكالمة", "bubble", false) { v ->
-            if (v && !Settings.canDrawOverlays(this)) {
-                toast("اسمح بـ«العرض فوق التطبيقات» ثم ارجع")
-                try {
-                    startActivity(
-                        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-                    )
-                } catch (e: Exception) {
-                }
-            }
-        })
-
         val w = section(col, "تطبيق واتساب")
         val wl = T.label(this, "المختار: " + waName(Store.waPref(this)), 14f, T.MUTED)
         waLabel = wl

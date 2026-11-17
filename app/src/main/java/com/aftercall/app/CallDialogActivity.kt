@@ -37,14 +37,10 @@ class CallDialogActivity : Activity() {
         super.onCreate(savedInstanceState)
         number = intent.getStringExtra("number") ?: ""
         name = intent.getStringExtra("name") ?: ""
-        if (number.isBlank()) {
-            val last = readLastCall(this, System.currentTimeMillis() - 120000L)
-            if (last != null) {
-                number = last.number
-                name = last.name
-            }
-        }
+        build()
+    }
 
+    private fun build() {
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.layoutDirection = View.LAYOUT_DIRECTION_RTL
@@ -97,12 +93,26 @@ class CallDialogActivity : Activity() {
             addRow(root, Opt("إلغاء", true) { finish() }, null)
         } else {
             val msg = T.label(
-                this, "لا يوجد رقم لهذه المكالمة. تأكد من منح الصلاحيات من داخل التطبيق.",
+                this, "اختر رسالة لفتح واتساب، أو حدّد الرقم أولاً لإرسالها له مباشرة.",
                 14f, T.MUTED
             )
             msg.gravity = Gravity.CENTER
-            msg.setPadding(0, dp(12), 0, dp(12))
+            msg.setPadding(0, dp(8), 0, dp(8))
             root.addView(msg)
+            val t = Store.templates(this)
+            var i = 0
+            while (i < t.size) {
+                val a = t[i]
+                val b = if (i + 1 < t.size) t[i + 1] else null
+                addRow(
+                    root,
+                    Opt(a.label) { openWhatsApp(a.text) },
+                    if (b != null) Opt(b.label) { openWhatsApp(b.text) } else null
+                )
+                i += 2
+            }
+            addRow(root, Opt("🔢 أدخل الرقم", true) { askNumber() }, Opt("👤 جهات الاتصال", true) { pickContact() })
+            addRow(root, Opt("📍 موقعي", true) { sendLocation() }, Opt("📞 افتح الاتصال", true) { callBack() })
             addRow(root, Opt("إلغاء", true) { finish() }, null)
         }
 
@@ -111,6 +121,65 @@ class CallDialogActivity : Activity() {
         setContentView(sv)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setFinishOnTouchOutside(true)
+    }
+
+    private fun askNumber() {
+        val et = EditText(this)
+        et.inputType = android.text.InputType.TYPE_CLASS_PHONE
+        et.hint = "07xxxxxxxxx"
+        et.textDirection = View.TEXT_DIRECTION_LTR
+        AlertDialog.Builder(this)
+            .setTitle("رقم الزبون")
+            .setView(et)
+            .setPositiveButton("تم") { _, _ ->
+                val n = et.text.toString().trim()
+                if (n.isNotBlank()) {
+                    number = n
+                    name = ""
+                    build()
+                }
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun pickContact() {
+        try {
+            startActivityForResult(
+                Intent(
+                    Intent.ACTION_PICK,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                ),
+                31
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, "تعذر فتح جهات الاتصال", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (requestCode == 31 && resultCode == RESULT_OK && uri != null) {
+            try {
+                contentResolver.query(
+                    uri,
+                    arrayOf(
+                        android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+                    ),
+                    null, null, null
+                )?.use { c ->
+                    if (c.moveToFirst()) {
+                        number = c.getString(0) ?: ""
+                        name = c.getString(1) ?: ""
+                    }
+                }
+            } catch (e: Exception) {
+            }
+            build()
+        }
     }
 
     private fun refreshNote() {
@@ -287,13 +356,11 @@ class CallDialogActivity : Activity() {
     }
 
     private fun callBack() {
-        val uri = Uri.parse("tel:" + Uri.encode(number))
-        val granted = checkSelfPermission(Manifest.permission.CALL_PHONE) ==
-            PackageManager.PERMISSION_GRANTED
+        val uri = if (number.isBlank()) Uri.parse("tel:") else Uri.parse("tel:" + Uri.encode(number))
         try {
-            startActivity(Intent(if (granted) Intent.ACTION_CALL else Intent.ACTION_DIAL, uri))
+            startActivity(Intent(Intent.ACTION_DIAL, uri))
         } catch (e: Exception) {
-            Toast.makeText(this, "تعذر الاتصال", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "تعذر فتح الاتصال", Toast.LENGTH_SHORT).show()
         }
         finish()
     }

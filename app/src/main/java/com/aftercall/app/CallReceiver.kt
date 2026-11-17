@@ -35,50 +35,6 @@ object Diag {
     }
 }
 
-class CallInfo(val number: String, val name: String, val date: Long, val type: Int = 0)
-
-fun readLastCall(ctx: Context, start: Long): CallInfo? {
-    if (ctx.checkSelfPermission(Manifest.permission.READ_CALL_LOG) !=
-        PackageManager.PERMISSION_GRANTED
-    ) return null
-    return try {
-        val args = Bundle().apply {
-            putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "date DESC")
-            putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
-        }
-        ctx.contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
-            arrayOf(
-                CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME,
-                CallLog.Calls.DATE, CallLog.Calls.TYPE
-            ),
-            args,
-            null
-        )?.use { c ->
-            if (c.moveToFirst()) {
-                val date = c.getLong(2)
-                if (date >= start - 5000) {
-                    CallInfo(c.getString(0) ?: "", c.getString(1) ?: "", date, c.getInt(3))
-                } else null
-            } else null
-        }
-    } catch (e: Exception) {
-        null
-    }
-}
-
-object CallGate {
-    @Synchronized
-    fun claim(ctx: Context, date: Long): Boolean {
-        val p = ctx.getSharedPreferences("aftercall", Context.MODE_PRIVATE)
-        var last = p.getLong("last_date", 0L)
-        if (last == 0L) last = System.currentTimeMillis() - 10 * 60 * 1000
-        if (date <= last) return false
-        p.edit().putLong("last_date", date).apply()
-        return true
-    }
-}
-
 object Notifier {
     private var rt: android.media.Ringtone? = null
 
@@ -164,7 +120,6 @@ object Notifier {
         } catch (e: SecurityException) {
         }
         if (alert) playSound(ctx)
-        Bubble.show(ctx, number, name)
     }
 }
 
@@ -205,9 +160,6 @@ class CallReceiver : BroadcastReceiver() {
                 val nowIdle = System.currentTimeMillis()
                 if (nowIdle - p.getLong("last_idle", 0L) < 1500) return
                 p.edit().putLong("last_idle", nowIdle).apply()
-                val wasActive = p.getBoolean("active", false)
-                val since = if (wasActive) p.getLong("start", 0L) else System.currentTimeMillis() - 20000
-                val known = p.getString("last_number", "") ?: ""
                 val type = when (p.getString("kind", "") ?: "") {
                     "ring" -> 3
                     "in" -> 1
@@ -215,32 +167,9 @@ class CallReceiver : BroadcastReceiver() {
                     else -> 0
                 }
                 p.edit().putBoolean("active", false).putString("kind", "").apply()
-                val app = context.applicationContext
-                Diag.log(app, "IDLE wasActive=$wasActive")
-                // لا نُظهر الإشعار إلا إذا ظهرت المكالمة فعلاً بسجل مكالمات الهاتف
-                // (مكالمات واتساب وغيرها لا تُسجَّل هناك فلا يطلع لها شي)
-                val pending = goAsync()
-                poll(app, false, since, pending, 0)
+                if (type == 0) return
+                Notifier.show(context.applicationContext, 1, "انتهت المكالمة", "", "", true, type)
             }
-        }
-    }
-
-    private fun poll(
-        ctx: Context, shownBefore: Boolean, since: Long,
-        pending: BroadcastReceiver.PendingResult, attempt: Int
-    ) {
-        val info = readLastCall(ctx, since)
-        if (attempt == 0 || attempt == 24) Diag.log(ctx, "poll#$attempt info=${info?.date}")
-        if (info != null && CallGate.claim(ctx, info.date)) {
-            Diag.log(ctx, "poll claimed -> notify")
-            Notifier.show(ctx, 1, "انتهت المكالمة", info.number, info.name, !shownBefore, info.type)
-            pending.finish()
-        } else if (attempt >= 24) {
-            pending.finish()
-        } else {
-            Handler(Looper.getMainLooper()).postDelayed({
-                poll(ctx, shownBefore, since, pending, attempt + 1)
-            }, 250)
         }
     }
 }

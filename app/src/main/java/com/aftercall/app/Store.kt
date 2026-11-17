@@ -161,7 +161,7 @@ object Store {
         return if (digits.startsWith("0")) "964" + digits.drop(1) else digits
     }
 
-    private val boolKeys = listOf("in", "out", "missed", "service", "bubble")
+    private val boolKeys = listOf("in", "out", "missed")
 
     fun backup(c: Context): String {
         val o = JSONObject()
@@ -171,7 +171,7 @@ object Store {
         val n = JSONObject()
         for ((k, v) in notes(c).all) n.put(k, v.toString())
         o.put("notes", n)
-        for (k in boolKeys) o.put(k, getBool(c, k, k != "bubble"))
+        for (k in boolKeys) o.put(k, getBool(c, k, true))
         o.put("wa", waPref(c))
         return "حولني-نسخة:" + o.toString()
     }

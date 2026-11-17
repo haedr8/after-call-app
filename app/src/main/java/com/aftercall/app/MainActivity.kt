@@ -30,15 +30,12 @@ class MainActivity : Activity() {
     private class SRow(val label: TextView, val fix: Button)
 
     private lateinit var rPerm: SRow
-    private lateinit var rBat: SRow
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
     private val tiktokUser = "haedr.m1"
     private val instagramUser = "haedr.m1"
     private val supportWa = "9647712384075"
-    private val zainCash = "07712384075"
-
     private fun dp(v: Int): Int = T.dp(this, v)
 
     private fun versionLabel(): String {
@@ -51,10 +48,7 @@ class MainActivity : Activity() {
 
     private fun needed(): Array<String> {
         val l = mutableListOf(
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CALL_PHONE
+            Manifest.permission.READ_PHONE_STATE
         )
         if (Build.VERSION.SDK_INT >= 33) l.add(Manifest.permission.POST_NOTIFICATIONS)
         return l.toTypedArray()
@@ -142,8 +136,7 @@ class MainActivity : Activity() {
         // ---- حالة التطبيق ----
         val st = T.card(this)
         st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
-        rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
-        rBat = statusRow(st, "سماح") { batterySettings() }
+        rPerm = statusRow(st, "منح") { disclosure() }
         col.addView(st, T.gap(this, 14))
 
         // ---- الأدوات ----
@@ -159,21 +152,20 @@ class MainActivity : Activity() {
         )
         col.addView(
             tileRow(
-                T.tile(this, "🔋", "التشغيل التلقائي") { showOemHelp() },
+                T.tile(this, "ℹ️", "كيف يعمل التطبيق") { showHow() },
                 T.tile(this, "🛠", "تشخيص المشاكل") { showDiag() }
             ),
             T.gap(this, 10)
         )
         col.addView(
             tileRow(
-                T.tile(this, "🔄", "فحص التحديثات") { checkUpdates(true) },
-                T.tile(this, "🔒", "سياسة الخصوصية") { openUrl(privacyUrl) }
+                T.tile(this, "🔒", "سياسة الخصوصية") { openUrl(privacyUrl) },
+                T.tile(this, "🔋", "التشغيل بالخلفية") { showOemHelp() }
             ),
             T.gap(this, 10)
         )
 
         // ---- الدعم ----
-        col.addView(T.button(this, "💚 دعم المطوّر (زين كاش)", false) { showDonate() }, T.gap(this, 18))
 
         // ---- التذييل ----
         val credit = T.label(this, "تصميم وتطوير: حيدر محمد", 14f, T.MUTED)
@@ -205,35 +197,35 @@ class MainActivity : Activity() {
             )
         )
         setContentView(scroll)
-        checkUpdates(false)
         if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this)
     }
 
-    private fun batterySettings() {
-        Oem.requestBattery(this)
+    private fun disclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("إشعار بانتهاء المكالمة")
+            .setMessage(
+                "يستخدم «حولني» إذن «حالة الهاتف» فقط لمعرفة متى تبدأ المكالمة وتنتهي، " +
+                    "ليظهر لك إشعار بعد انتهائها فيه رسائل واتساب جاهزة.\n\n" +
+                    "• لا يقرأ التطبيق سجل مكالماتك ولا جهات اتصالك.\n" +
+                    "• لا يسجّل المكالمات ولا يسمعها.\n" +
+                    "• لا يرسل أي بيانات لأي جهة، كل شي يبقى على هاتفك.\n\n" +
+                    "هل توافق؟"
+            )
+            .setPositiveButton("موافق") { _, _ -> requestPermissions(needed(), 1) }
+            .setNegativeButton("ليس الآن", null)
+            .show()
     }
 
-    private fun showDonate() {
-        val tv = TextView(this)
-        tv.text = "التطبيق مجاني بالكامل 🌹\n\n" +
-            "إذا أعجبك وتحب تدعم المطوّر، تقدر تتبرع (اختياري تماماً) عبر زين كاش على هذا الرقم:\n\n" +
-            zainCash + "\n\n" +
-            "شكراً لدعمك 💚"
-        tv.textSize = 16f
-        tv.setTextColor(0xFF000000.toInt())
-        tv.gravity = Gravity.CENTER
-        tv.setPadding(dp(20), dp(16), dp(20), dp(8))
-        tv.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        tv.setTextIsSelectable(true)
+    private fun showHow() {
         AlertDialog.Builder(this)
-            .setTitle("💚 دعم المطوّر")
-            .setView(tv)
-            .setPositiveButton("📋 نسخ الرقم") { _, _ ->
-                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("زين كاش", zainCash))
-                Toast.makeText(this, "تم نسخ الرقم ✅ حوّل من تطبيق زين كاش", Toast.LENGTH_LONG).show()
-            }
-            .setNegativeButton("إغلاق", null)
+            .setTitle("كيف يعمل التطبيق")
+            .setMessage(
+                "1) بعد انتهاء أي مكالمة يظهر إشعار «انتهت المكالمة».\n" +
+                    "2) اضغط الإشعار، واختر رسالة جاهزة (مثل: أنا وصلت).\n" +
+                    "3) إذا ما ظهر رقم الزبون، اختر «أدخل الرقم» أو «جهات الاتصال» وتُفتح محادثة واتساب مع الرسالة.\n\n" +
+                    "تقدر تعدّل الرسائل من الإعدادات."
+            )
+            .setPositiveButton("تمام", null)
             .show()
     }
 
@@ -249,9 +241,6 @@ class MainActivity : Activity() {
             val ok = checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
             sb.append(if (ok) "✅ " else "❌ ").append(p.substringAfterLast('.')).append("\n")
         }
-        val pm = getSystemService(PowerManager::class.java)
-        val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
-        sb.append(if (free) "✅" else "❌").append(" الخلفية (البطارية)\n")
         val log = getSharedPreferences("diag", MODE_PRIVATE).getString("log", "") ?: ""
         sb.append("\nسجل الأحداث:\n")
         sb.append(if (log.isBlank()) "(فارغ: لم يصل أي حدث للتطبيق)" else log)
@@ -295,55 +284,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun checkUpdates(manual: Boolean) {
-        if (manual) Toast.makeText(this, "جاري الفحص...", Toast.LENGTH_SHORT).show()
-        Updater.check(this) { info, error ->
-            if (!isFinishing && !isDestroyed) {
-                if (info != null) {
-                    showUpdateDialog(info)
-                } else if (manual) {
-                    val msg = if (error) "تعذر الفحص، تأكد من الإنترنت" else "أنت على آخر إصدار ✅"
-                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }
-
-    private fun showUpdateDialog(info: UpdateInfo) {
-        val notes = if (info.notes.isBlank()) "تحسينات عامة" else info.notes
-        AlertDialog.Builder(this)
-            .setTitle("تحديث جديد متوفر")
-            .setMessage("ما الجديد:\n" + notes)
-            .setPositiveButton("تنزيل التحديث") { _, _ -> startDownload(info) }
-            .setNegativeButton("لاحقاً", null)
-            .show()
-    }
-
-    private fun startDownload(info: UpdateInfo) {
-        if (!Updater.canInstall(this)) {
-            Toast.makeText(
-                this,
-                "فعّل «السماح من هذا المصدر» ثم ارجع واضغط فحص التحديثات",
-                Toast.LENGTH_LONG
-            ).show()
-            Updater.openInstallSettings(this)
-            return
-        }
-        val d = AlertDialog.Builder(this)
-            .setTitle("جاري تنزيل التحديث")
-            .setMessage("0%")
-            .setCancelable(false)
-            .show()
-        Updater.download(this, info, { p -> d.setMessage("$p%") }, { f ->
-            d.dismiss()
-            if (f != null) {
-                Updater.install(this, f)
-            } else {
-                Toast.makeText(this, "فشل التنزيل، حاول مرة ثانية", Toast.LENGTH_LONG).show()
-            }
-        })
-    }
-
     override fun onResume() {
         super.onResume()
         refresh()
@@ -356,14 +296,9 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
-        MonitorService.start(this)
-
         val ok = needed().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
         setRow(rPerm, ok, "الصلاحيات ممنوحة", "الصلاحيات ناقصة")
 
-        val pm = getSystemService(PowerManager::class.java)
-        val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
-        setRow(rBat, free, "الخلفية مسموحة", "البطارية قد توقف التطبيق")
     }
 
     private fun openAppInfo() {

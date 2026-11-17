@@ -1,16 +1,16 @@
-name: Build
+name: Build Play
 
 on:
   push:
-    branches: [ main ]
+    branches: [ play-store ]
   workflow_dispatch:
 
 concurrency:
-  group: build
+  group: build-play
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -60,12 +60,3 @@ jobs:
         with:
           name: haulni-aab-for-google-play
           path: app/build/outputs/bundle/release/*.aab
-
-      - name: Publish release for in-app updates
-        if: startsWith(github.event.head_commit.message, 'release') || github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/haulni.apk"
-          if [ ! -f RELEASE_NOTES.md ]; then echo "تحسينات عامة" > RELEASE_NOTES.md; fi
-          gh release create "v${{ github.run_number }}" "$RUNNER_TEMP/haulni.apk" --title "حولني - إصدار ${{ steps.ver.outputs.name }}" --notes-file RELEASE_NOTES.md --latest

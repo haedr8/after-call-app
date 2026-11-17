@@ -43,7 +43,7 @@ object Oem {
     fun requestBattery(a: Activity) {
         try {
             a.startActivity(
-                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + a.packageName))
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + a.packageName))
             )
             return
         } catch (e: Exception) {
@@ -101,10 +101,7 @@ object Wizard {
 
     private fun perms(a: Activity) {
         val l = mutableListOf(
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CALL_PHONE
+            Manifest.permission.READ_PHONE_STATE
         )
         if (Build.VERSION.SDK_INT >= 33) l.add(Manifest.permission.POST_NOTIFICATIONS)
         a.requestPermissions(l.toTypedArray(), 1)
@@ -120,30 +117,14 @@ object Wizard {
     private fun steps(): List<Step> = listOf(
         Step(
             "الصلاحيات",
-            "اضغط «السماح» ووافق على كل الصلاحيات (الهاتف، سجل المكالمات، جهات الاتصال، الإشعارات). بدونها التطبيق ما يشتغل.",
+            "يستخدم التطبيق إذن «حالة الهاتف» فقط لمعرفة متى تنتهي المكالمة وإظهار إشعار فيه رسائل جاهزة، وإذن الإشعارات لإظهاره. لا يقرأ سجل مكالماتك ولا جهات اتصالك ولا يرسل أي بيانات. اضغط «السماح» للمتابعة.",
             "السماح"
         ) { a -> perms(a) },
-        Step(
-            "البطارية",
-            "اضغط «السماح» ثم وافق على «السماح بالعمل بالخلفية». هذا يمنع الهاتف (خصوصاً تكنو وإنفينكس) من إيقاف التطبيق وضياع الإشعار.",
-            "السماح"
-        ) { a -> Oem.requestBattery(a) },
         Step(
             "التشغيل التلقائي",
             Oem.tip(),
             "فتح الإعدادات"
-        ) { a -> Oem.openAutostart(a) },
-        Step(
-            "النافذة العائمة (اختياري)",
-            "تظهر نافذة صغيرة فوق الشاشة بعد المكالمة. اضغط «تفعيل» ثم اسمح بـ«العرض فوق التطبيقات».",
-            "تفعيل"
-        ) { a ->
-            Store.setBool(a, "bubble", true)
-            open(
-                a,
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + a.packageName))
-            )
-        },
+        ) { a -> Oem.requestBattery(a) },
         Step(
             "جاهز ✅",
             "سوّي مكالمة تجربة وأنهها، ويطلع لك إشعار «انتهت المكالمة». تقدر تعدّل الرسائل والخيارات من «الإعدادات».",
