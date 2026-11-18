@@ -199,19 +199,27 @@ class InCallActivity : Activity() {
                 false
             }
             val speaker = route == CallAudioState.ROUTE_SPEAKER
-            proximity(p.state == Call.STATE_ACTIVE && !speaker)
+            proximity(p.state == Call.STATE_ACTIVE && route == CallAudioState.ROUTE_EARPIECE)
             val r1 = LinearLayout(this)
             r1.orientation = LinearLayout.HORIZONTAL
             r1.addView(circle(if (muted) "🔇\nمكتوم" else "🎤\nكتم", ctl, muted) {
                 CallManager.service?.setMuted(!muted)
                 h.postDelayed({ render() }, 200)
             }, lp())
-            r1.addView(circle(if (speaker) "🔊\nسماعة ✓" else "🔊\nسماعة", ctl, speaker) {
-                CallManager.service?.setAudioRoute(
-                    if (speaker) CallAudioState.ROUTE_EARPIECE else CallAudioState.ROUTE_SPEAKER
-                )
-                h.postDelayed({ render() }, 200)
-            }, lp())
+            val mask = try {
+                CallManager.service?.callAudioState?.supportedRouteMask ?: 0
+            } catch (e: Exception) {
+                0
+            }
+            val bt = route == CallAudioState.ROUTE_BLUETOOTH
+            val wired = route == CallAudioState.ROUTE_WIRED_HEADSET
+            val audioLabel = when {
+                bt -> "🎧\nبلوتوث"
+                wired -> "🎧\nسماعة سلكية"
+                speaker -> "🔊\nسبيكر"
+                else -> "📱\nالأذن"
+            }
+            r1.addView(circle(audioLabel, ctl, speaker || bt || wired) { audioPicker(mask, route) }, lp())
             r1.addView(circle("⌨️\nأرقام", ctl) { dtmf(p) }, lp())
             val canHold = p.state == Call.STATE_ACTIVE || p.state == Call.STATE_HOLDING
             r1.addView(
@@ -239,6 +247,49 @@ class InCallActivity : Activity() {
         q.topMargin = dp(12)
         root.addView(r2, q)
         setContentView(root)
+    }
+
+    private fun setRoute(r: Int) {
+        try {
+            CallManager.service?.setAudioRoute(r)
+        } catch (e: Exception) {
+        }
+        h.postDelayed({ render() }, 250)
+    }
+
+    private fun audioPicker(mask: Int, current: Int) {
+        val names = ArrayList<String>()
+        val routes = ArrayList<Int>()
+        if (mask and CallAudioState.ROUTE_BLUETOOTH != 0) {
+            names.add("🎧 سماعة بلوتوث"); routes.add(CallAudioState.ROUTE_BLUETOOTH)
+        }
+        if (mask and CallAudioState.ROUTE_WIRED_HEADSET != 0) {
+            names.add("🎧 سماعة سلكية"); routes.add(CallAudioState.ROUTE_WIRED_HEADSET)
+        }
+        if (mask and CallAudioState.ROUTE_EARPIECE != 0) {
+            names.add("📱 سماعة الأذن"); routes.add(CallAudioState.ROUTE_EARPIECE)
+        }
+        if (mask and CallAudioState.ROUTE_SPEAKER != 0) {
+            names.add("🔊 السبيكر"); routes.add(CallAudioState.ROUTE_SPEAKER)
+        }
+        if (routes.size <= 2 && routes.contains(CallAudioState.ROUTE_SPEAKER) &&
+            routes.contains(CallAudioState.ROUTE_EARPIECE)
+        ) {
+            setRoute(
+                if (current == CallAudioState.ROUTE_SPEAKER) CallAudioState.ROUTE_EARPIECE
+                else CallAudioState.ROUTE_SPEAKER
+            )
+            return
+        }
+        val i = routes.indexOf(current)
+        AlertDialog.Builder(this)
+            .setTitle("مخرج الصوت")
+            .setSingleChoiceItems(names.toTypedArray(), i) { d, w ->
+                setRoute(routes[w])
+                d.dismiss()
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
     }
 
     private fun swap(p: Call, o: Call) {
