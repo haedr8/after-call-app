@@ -356,6 +356,10 @@ class CallDialogActivity : Activity() {
     }
 
     private fun callBack() {
+        if (number.isNotBlank() && Phone.granted(this, Manifest.permission.CALL_PHONE)) {
+            if (Phone.place(this, number)) finish()
+            return
+        }
         val uri = if (number.isBlank()) Uri.parse("tel:") else Uri.parse("tel:" + Uri.encode(number))
         try {
             startActivity(Intent(Intent.ACTION_DIAL, uri))

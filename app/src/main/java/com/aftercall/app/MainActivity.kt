@@ -30,6 +30,7 @@ class MainActivity : Activity() {
     private class SRow(val label: TextView, val fix: Button)
 
     private lateinit var rPerm: SRow
+    private lateinit var rDef: SRow
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
@@ -46,13 +47,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun needed(): Array<String> {
-        val l = mutableListOf(
-            Manifest.permission.READ_PHONE_STATE
-        )
-        if (Build.VERSION.SDK_INT >= 33) l.add(Manifest.permission.POST_NOTIFICATIONS)
-        return l.toTypedArray()
-    }
+    private fun needed(): Array<String> = Phone.perms
 
     private fun statusRow(parent: LinearLayout, fixText: String, onFix: () -> Unit): SRow {
         val row = LinearLayout(this)
@@ -136,11 +131,23 @@ class MainActivity : Activity() {
         // ---- حالة التطبيق ----
         val st = T.card(this)
         st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
-        rPerm = statusRow(st, "منح") { disclosure() }
+        rDef = statusRow(st, "تفعيل") { disclosure() }
+        rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
         col.addView(st, T.gap(this, 14))
 
         // ---- الأدوات ----
         col.addView(T.label(this, "الأدوات", 14f, T.MUTED, true), T.gap(this, 18))
+        col.addView(
+            tileRow(
+                T.tile(this, "📞", "لوحة الأرقام") {
+                    startActivity(Intent(this, DialerActivity::class.java))
+                },
+                T.tile(this, "🕘", "سجل المكالمات") {
+                    startActivity(Intent(this, LogActivity::class.java))
+                }
+            ),
+            T.gap(this, 8)
+        )
         col.addView(
             tileRow(
                 T.tile(this, "⚙️", "الإعدادات") {
@@ -202,27 +209,34 @@ class MainActivity : Activity() {
 
     private fun disclosure() {
         AlertDialog.Builder(this)
-            .setTitle("إشعار بانتهاء المكالمة")
+            .setTitle("اجعل حولني تطبيق الهاتف")
             .setMessage(
-                "يستخدم «حولني» إذن «حالة الهاتف» فقط لمعرفة متى تبدأ المكالمة وتنتهي، " +
-                    "ليظهر لك إشعار بعد انتهائها فيه رسائل واتساب جاهزة.\n\n" +
-                    "• لا يقرأ التطبيق سجل مكالماتك ولا جهات اتصالك.\n" +
-                    "• لا يسجّل المكالمات ولا يسمعها.\n" +
-                    "• لا يرسل أي بيانات لأي جهة، كل شي يبقى على هاتفك.\n\n" +
-                    "هل توافق؟"
+                "«حولني» تطبيق اتصال كامل: لوحة أرقام، سجل مكالمات، واستقبال وإنهاء المكالمات.\n\n" +
+                    "لهذا يطلب أن يكون تطبيق الهاتف الافتراضي، ويطلب صلاحيات: الهاتف، سجل المكالمات، " +
+                    "جهات الاتصال، والاتصال، والإشعارات.\n\n" +
+                    "يستخدمها فقط لعرض اسم ورقم المتصل والسجل، وإظهار رسائل واتساب جاهزة بعد كل مكالمة.\n\n" +
+                    "• لا يسجّل المكالمات.\n" +
+                    "• لا يرسل أي بيانات لأي جهة، كل شي يبقى على هاتفك.\n" +
+                    "• تقدر ترجع تطبيق الهاتف القديم بأي وقت من إعدادات الهاتف."
             )
-            .setPositiveButton("موافق") { _, _ -> requestPermissions(needed(), 1) }
+            .setPositiveButton("موافق") { _, _ -> Phone.requestDefault(this) }
             .setNegativeButton("ليس الآن", null)
             .show()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 77 && Phone.isDefault(this)) requestPermissions(needed(), 1)
     }
 
     private fun showHow() {
         AlertDialog.Builder(this)
             .setTitle("كيف يعمل التطبيق")
             .setMessage(
-                "1) بعد انتهاء أي مكالمة يظهر إشعار «انتهت المكالمة».\n" +
-                    "2) اضغط الإشعار، واختر رسالة جاهزة (مثل: أنا وصلت).\n" +
-                    "3) إذا ما ظهر رقم الزبون، اختر «أدخل الرقم» أو «جهات الاتصال» وتُفتح محادثة واتساب مع الرسالة.\n\n" +
+                "1) فعّل «تطبيق الهاتف الافتراضي» من الشاشة الرئيسية.\n" +
+                    "2) بعد انتهاء أي مكالمة يظهر إشعار «انتهت المكالمة» برقم الزبون.\n" +
+                    "3) اضغطه واختر رسالة جاهزة (مثل: أنا وصلت) فتفتح محادثة واتساب مع الرسالة.\n\n" +
                     "تقدر تعدّل الرسائل من الإعدادات."
             )
             .setPositiveButton("تمام", null)
@@ -296,6 +310,7 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
+        setRow(rDef, Phone.isDefault(this), "حولني هو تطبيق الهاتف", "حولني ليس تطبيق الهاتف الافتراضي")
         val ok = needed().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
         setRow(rPerm, ok, "الصلاحيات ممنوحة", "الصلاحيات ناقصة")
 

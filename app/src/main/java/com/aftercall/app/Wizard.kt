@@ -100,11 +100,7 @@ object Wizard {
     }
 
     private fun perms(a: Activity) {
-        val l = mutableListOf(
-            Manifest.permission.READ_PHONE_STATE
-        )
-        if (Build.VERSION.SDK_INT >= 33) l.add(Manifest.permission.POST_NOTIFICATIONS)
-        a.requestPermissions(l.toTypedArray(), 1)
+        a.requestPermissions(Phone.perms, 1)
     }
 
     private fun open(a: Activity, i: Intent) {
@@ -116,8 +112,13 @@ object Wizard {
 
     private fun steps(): List<Step> = listOf(
         Step(
+            "تطبيق الهاتف",
+            "«حولني» تطبيق اتصال كامل. اضغط «تفعيل» ووافق على جعله تطبيق الهاتف الافتراضي. تقدر ترجع تطبيقك القديم بأي وقت من إعدادات الهاتف.",
+            "تفعيل"
+        ) { a -> Phone.requestDefault(a) },
+        Step(
             "الصلاحيات",
-            "يستخدم التطبيق إذن «حالة الهاتف» فقط لمعرفة متى تنتهي المكالمة وإظهار إشعار فيه رسائل جاهزة، وإذن الإشعارات لإظهاره. لا يقرأ سجل مكالماتك ولا جهات اتصالك ولا يرسل أي بيانات. اضغط «السماح» للمتابعة.",
+            "اضغط «السماح» ووافق على: الهاتف، سجل المكالمات، جهات الاتصال، الاتصال، والإشعارات. تُستخدم فقط لعرض اسم ورقم المتصل وإظهار الرسائل الجاهزة، ولا يُرسل أي شي خارج هاتفك.",
             "السماح"
         ) { a -> perms(a) },
         Step(
