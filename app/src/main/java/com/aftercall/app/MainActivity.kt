@@ -173,13 +173,7 @@ class MainActivity : Activity() {
             ),
             T.gap(this, 10)
         )
-        col.addView(
-            tileRow(
-                T.tile(this, "🔋", "التشغيل بالخلفية") { showOemHelp() },
-                T.tile(this, "ℹ️", "عن التطبيق") { showHow() }
-            ),
-            T.gap(this, 10)
-        )
+        col.addView(T.button(this, "🔋 نصائح التشغيل بالخلفية لهاتفك", false) { showOemHelp() }, T.gap(this, 10))
 
         // ---- الدعم ----
 
