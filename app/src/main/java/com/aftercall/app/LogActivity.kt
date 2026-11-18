@@ -96,7 +96,14 @@ class LogActivity : Activity() {
         val l2 = T.label(this, sub, 13f, T.MUTED)
         l2.textDirection = View.TEXT_DIRECTION_LTR
         box.addView(l2)
-        box.setOnClickListener { if (number.isNotBlank()) options(number, name) }
+        box.setOnClickListener {
+            if (number.isNotBlank()) {
+                startActivity(
+                    Intent(this, CallDialogActivity::class.java)
+                        .putExtra("number", number).putExtra("name", name)
+                )
+            }
+        }
         col.addView(box, T.gap(this, 8))
     }
 

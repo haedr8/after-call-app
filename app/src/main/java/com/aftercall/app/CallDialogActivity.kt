@@ -76,6 +76,7 @@ class CallDialogActivity : Activity() {
             root.addView(nv, T.gap(this, 8))
             refreshNote()
 
+            addRow(root, Opt("📞 اتصال") { callBack() }, Opt("📲 اتصال واتساب") { waCall() })
             val t = Store.templates(this)
             var i = 0
             while (i < t.size) {
@@ -89,8 +90,7 @@ class CallDialogActivity : Activity() {
                 i += 2
             }
             addRow(root, Opt("📍 موقعي", true) { sendLocation() }, Opt("📝 ملاحظة", true) { editNote() })
-            addRow(root, Opt("✉️ SMS", true) { openSms() }, Opt("📞 إعادة اتصال", true) { callBack() })
-            addRow(root, Opt("إلغاء", true) { finish() }, null)
+            addRow(root, Opt("✉️ SMS", true) { openSms() }, Opt("إلغاء", true) { finish() })
         } else {
             val msg = T.label(
                 this, "اختر رسالة لفتح واتساب، أو حدّد الرقم أولاً لإرسالها له مباشرة.",
@@ -119,7 +119,8 @@ class CallDialogActivity : Activity() {
         val sv = ScrollView(this)
         sv.addView(root)
         setContentView(sv)
-        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        val sw = resources.displayMetrics.widthPixels
+        window.setLayout(minOf((sw * 0.96f).toInt(), dp(480)), ViewGroup.LayoutParams.WRAP_CONTENT)
         setFinishOnTouchOutside(true)
     }
 
@@ -210,10 +211,8 @@ class CallDialogActivity : Activity() {
         } else {
             T.tonal(this, o.label) { o.action() }
         }
-        if (o.outline) {
-            b.maxLines = 1
-            b.setAutoSizeTextTypeUniformWithConfiguration(11, 15, 1, TypedValue.COMPLEX_UNIT_SP)
-        }
+        b.maxLines = 1
+        b.setAutoSizeTextTypeUniformWithConfiguration(10, 16, 1, TypedValue.COMPLEX_UNIT_SP)
         return b
     }
 
@@ -315,6 +314,70 @@ class CallDialogActivity : Activity() {
         if (requestCode == 21 && grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
             sendLocation()
         }
+    }
+
+    private fun withWa(go: (String?) -> Unit) {
+        if (Store.waPref(this) == "ask" &&
+            Store.isInstalled(this, Store.WA) && Store.isInstalled(this, Store.WA_B)
+        ) {
+            AlertDialog.Builder(this)
+                .setTitle("أي واتساب؟")
+                .setItems(arrayOf("واتساب العادي", "واتساب للأعمال (Business)")) { _, w ->
+                    go(if (w == 0) Store.WA else Store.WA_B)
+                }
+                .setNegativeButton("إلغاء", null)
+                .show()
+            return
+        }
+        go(Store.waPackage(this))
+    }
+
+    private fun waCall() {
+        withWa { pkg -> doWaCall(pkg) }
+    }
+
+    private fun doWaCall(pkg: String?) {
+        val n = Store.waNumber(this, number)
+        val business = pkg == Store.WA_B
+        val mime = if (business) "vnd.android.cursor.item/vnd.com.whatsapp.w4b.voip.call"
+        else "vnd.android.cursor.item/vnd.com.whatsapp.voip.call"
+        var uri: Uri? = null
+        if (Phone.granted(this, Manifest.permission.READ_CONTACTS)) {
+            try {
+                contentResolver.query(
+                    android.provider.ContactsContract.Data.CONTENT_URI,
+                    arrayOf(android.provider.ContactsContract.Data._ID, android.provider.ContactsContract.Data.DATA1),
+                    android.provider.ContactsContract.Data.MIMETYPE + "=?", arrayOf(mime), null
+                )?.use { c ->
+                    while (c.moveToNext()) {
+                        val d = c.getString(1) ?: ""
+                        if (n.isNotBlank() && d.startsWith(n)) {
+                            uri = android.content.ContentUris.withAppendedId(
+                                android.provider.ContactsContract.Data.CONTENT_URI, c.getLong(0)
+                            )
+                            break
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+            }
+        }
+        val u = uri
+        if (u != null) {
+            try {
+                val i = Intent(Intent.ACTION_VIEW).setDataAndType(u, mime)
+                if (pkg != null) i.setPackage(pkg)
+                startActivity(i)
+                finish()
+                return
+            } catch (e: Exception) {
+            }
+        }
+        Toast.makeText(
+            this, "الرقم غير محفوظ بجهات الاتصال، فتحت المحادثة: اضغط أيقونة الاتصال بواتساب",
+            Toast.LENGTH_LONG
+        ).show()
+        launchWa("", pkg)
     }
 
     private fun openWhatsApp(text: String) {

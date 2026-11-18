@@ -153,21 +153,30 @@ class MainActivity : Activity() {
                 T.tile(this, "⚙️", "الإعدادات") {
                     startActivity(Intent(this, SettingsActivity::class.java))
                 },
-                T.tile(this, "🧭", "دليل الإعداد") { Wizard.start(this) }
+                T.tile(this, "👤", "جهات الاتصال") {
+                    startActivity(Intent(this, ContactsActivity::class.java))
+                }
             ),
             T.gap(this, 8)
         )
         col.addView(
             tileRow(
-                T.tile(this, "ℹ️", "كيف يعمل التطبيق") { showHow() },
-                T.tile(this, "🛠", "تشخيص المشاكل") { showDiag() }
+                T.tile(this, "🧭", "دليل الإعداد") { Wizard.start(this) },
+                T.tile(this, "ℹ️", "كيف يعمل التطبيق") { showHow() }
             ),
             T.gap(this, 10)
         )
         col.addView(
             tileRow(
-                T.tile(this, "🔒", "سياسة الخصوصية") { openUrl(privacyUrl) },
-                T.tile(this, "🔋", "التشغيل بالخلفية") { showOemHelp() }
+                T.tile(this, "🛠", "تشخيص المشاكل") { showDiag() },
+                T.tile(this, "🔒", "سياسة الخصوصية") { openUrl(privacyUrl) }
+            ),
+            T.gap(this, 10)
+        )
+        col.addView(
+            tileRow(
+                T.tile(this, "🔋", "التشغيل بالخلفية") { showOemHelp() },
+                T.tile(this, "ℹ️", "عن التطبيق") { showHow() }
             ),
             T.gap(this, 10)
         )

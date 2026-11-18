@@ -121,7 +121,8 @@ class InCallActivity : Activity() {
         val t = TextView(this)
         t.text = label
         t.setTextColor(0xFFFFFFFF.toInt())
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        t.setAutoSizeTextTypeUniformWithConfiguration(9, 15, 1, TypedValue.COMPLEX_UNIT_SP)
+        t.maxLines = 2
         t.gravity = Gravity.CENTER
         t.background = T.shape(this, if (on) 0xFF1CC47A.toInt() else color, 40)
         t.setOnClickListener { f() }
@@ -129,7 +130,8 @@ class InCallActivity : Activity() {
     }
 
     private fun lp(): LinearLayout.LayoutParams {
-        val p = LinearLayout.LayoutParams(0, dp(72), 1f)
+        val h = (resources.displayMetrics.heightPixels * 0.095f).toInt().coerceIn(dp(56), dp(84))
+        val p = LinearLayout.LayoutParams(0, h, 1f)
         p.setMargins(dp(6), dp(6), dp(6), dp(6))
         return p
     }
@@ -149,6 +151,7 @@ class InCallActivity : Activity() {
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundColor(bg)
         root.setPadding(dp(16), dp(48), dp(16), dp(28))
+        Ui.fit(root, dp(16), dp(24))
         root.layoutDirection = View.LAYOUT_DIRECTION_RTL
 
         root.addView(big(stateText(p), 16f, 0xFFB7D3D6.toInt()))

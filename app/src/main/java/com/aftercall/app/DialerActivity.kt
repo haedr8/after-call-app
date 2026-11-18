@@ -31,6 +31,15 @@ class DialerActivity : Activity() {
         val d = intent?.data
         if (d != null && d.scheme == "tel") {
             number.append(Uri.decode(d.schemeSpecificPart ?: ""))
+            if (number.isNotBlank() && Store.getBool(this, "intercept", true)) {
+                val n = number.toString()
+                startActivity(
+                    Intent(this, CallDialogActivity::class.java)
+                        .putExtra("number", n).putExtra("name", Phone.name(this, n))
+                )
+                finish()
+                return
+            }
         }
         try {
             tone = ToneGenerator(AudioManager.STREAM_DTMF, 60)
@@ -43,8 +52,16 @@ class DialerActivity : Activity() {
         super.onNewIntent(intent)
         val d = intent?.data
         if (d != null && d.scheme == "tel") {
-            number = StringBuilder(Uri.decode(d.schemeSpecificPart ?: ""))
-            update()
+            val n = Uri.decode(d.schemeSpecificPart ?: "")
+            if (n.isNotBlank() && Store.getBool(this, "intercept", true)) {
+                startActivity(
+                    Intent(this, CallDialogActivity::class.java)
+                        .putExtra("number", n).putExtra("name", Phone.name(this, n))
+                )
+            } else {
+                number = StringBuilder(n)
+                update()
+            }
         }
     }
 
@@ -54,6 +71,7 @@ class DialerActivity : Activity() {
         root.setBackgroundColor(T.BG)
         root.layoutDirection = View.LAYOUT_DIRECTION_LTR
         root.setPadding(dp(12), dp(12), dp(12), dp(12))
+        Ui.fit(root, dp(12), dp(12))
 
         val top = LinearLayout(this)
         top.orientation = LinearLayout.HORIZONTAL
@@ -75,22 +93,24 @@ class DialerActivity : Activity() {
         display.textDirection = View.TEXT_DIRECTION_LTR
         display.maxLines = 1
         display.setAutoSizeTextTypeUniformWithConfiguration(18, 34, 1, TypedValue.COMPLEX_UNIT_SP)
-        root.addView(display, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(display, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.8f))
         root.addView(nameV)
 
         val rows = listOf("123", "456", "789", "*0#")
         for (r in rows) {
             val row = LinearLayout(this)
             row.orientation = LinearLayout.HORIZONTAL
-            for (ch in r) row.addView(key(ch), LinearLayout.LayoutParams(0, dp(64), 1f).also {
+            for (ch in r) row.addView(key(ch), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).also {
                 it.setMargins(dp(4), dp(4), dp(4), dp(4))
             })
-            root.addView(row)
+            root.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).also {
+                it.height = 0
+            })
         }
 
         val last = LinearLayout(this)
         last.orientation = LinearLayout.HORIZONTAL
-        val contacts = T.tonal(this, "👤") { pick() }
+        val contacts = T.tonal(this, "👤") { startActivity(Intent(this, ContactsActivity::class.java)) }
         val call = T.button(this, "📞", true) { doCall() }
         val del = T.tonal(this, "⌫") { backspace() }
         del.setOnLongClickListener {
@@ -98,11 +118,11 @@ class DialerActivity : Activity() {
             update()
             true
         }
-        val lpx = { LinearLayout.LayoutParams(0, dp(64), 1f).also { it.setMargins(dp(4), dp(4), dp(4), dp(4)) } }
+        val lpx = { LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).also { it.setMargins(dp(4), dp(4), dp(4), dp(4)) } }
         last.addView(contacts, lpx())
         last.addView(call, lpx())
         last.addView(del, lpx())
-        root.addView(last)
+        root.addView(last, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
         update()
     }
@@ -113,7 +133,7 @@ class DialerActivity : Activity() {
             beep(ch)
             update()
         }
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
+        b.setAutoSizeTextTypeUniformWithConfiguration(14, 28, 1, TypedValue.COMPLEX_UNIT_SP)
         if (ch == '0') {
             b.setOnLongClickListener {
                 number.append('+')

@@ -106,6 +106,9 @@ class SettingsActivity : Activity() {
         a.addView(sw("المكالمات الصادرة", "out", true, null))
         a.addView(sw("المكالمات الفائتة (مع أزرار اتصال وواتساب)", "missed", true, null))
 
+        val ic = section(col, "الأرقام من التطبيقات الثانية")
+        ic.addView(sw("عند الضغط على رقم بتطبيق آخر (طلبات…) افتح خيارات حولني", "intercept", true, null))
+
         val w = section(col, "تطبيق واتساب")
         val wl = T.label(this, "المختار: " + waName(Store.waPref(this)), 14f, T.MUTED)
         waLabel = wl
