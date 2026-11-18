@@ -2,7 +2,7 @@ name: Build Play
 
 on:
   push:
-    branches: [ play-store ]
+    branches: [ play-store, play-dialer ]
   workflow_dispatch:
 
 concurrency:
