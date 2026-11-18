@@ -184,7 +184,7 @@ class InCallActivity : Activity() {
         root.addView(spacer, LinearLayout.LayoutParams(0, 0, 1f))
 
         val ringing = p.state == Call.STATE_RINGING
-        val active = p.state == Call.STATE_ACTIVE || p.state == Call.STATE_HOLDING
+        val active = !ringing && p.state != Call.STATE_DISCONNECTED && p.state != Call.STATE_DISCONNECTING
         val ctl = 0xFF1F4A52.toInt()
 
         if (active) {
@@ -213,9 +213,10 @@ class InCallActivity : Activity() {
                 h.postDelayed({ render() }, 200)
             }, lp())
             r1.addView(circle("⌨️\nأرقام", ctl) { dtmf(p) }, lp())
+            val canHold = p.state == Call.STATE_ACTIVE || p.state == Call.STATE_HOLDING
             r1.addView(
-                circle(if (p.state == Call.STATE_HOLDING) "▶️\nاستئناف" else "⏸\nانتظار", ctl) {
-                    if (p.state == Call.STATE_HOLDING) p.unhold() else p.hold()
+                circle(if (!canHold) "⏸\nانتظار" else if (p.state == Call.STATE_HOLDING) "▶️\nاستئناف" else "⏸\nانتظار", ctl) {
+                    if (p.state == Call.STATE_HOLDING) p.unhold() else if (canHold) p.hold()
                 }, lp()
             )
             root.addView(r1)
