@@ -1,26 +1,27 @@
-# Permissions Declaration / Data safety
+# Permissions Declaration / Data safety (نسخة تطبيق الهاتف)
 
-## الصلاحيات في النسخة (4 فقط)
+## الدور
+التطبيق «تطبيق الهاتف الافتراضي» (ROLE_DIALER): لوحة أرقام، سجل، استقبال/إنهاء مكالمات عبر InCallService.
+
+## الصلاحيات
 | الإذن | السبب |
 |---|---|
-| READ_PHONE_STATE | معرفة بداية ونهاية المكالمة لإظهار الإشعار. لا يقرأ رقماً ولا سجلاً |
-| POST_NOTIFICATIONS | إظهار إشعار «انتهت المكالمة» |
-| ACCESS_COARSE/FINE_LOCATION | فقط عند ضغط المستخدم «موقعي» لإرسال موقعه بواتساب (إذن وقت الاستخدام، يُطلب عند الضغط) |
+| READ_CALL_LOG | عرض سجل المكالمات داخل التطبيق (وظيفة أساسية لتطبيق الهاتف) |
+| READ_CONTACTS | عرض اسم المتصل |
+| CALL_PHONE | إجراء المكالمات من لوحة الأرقام والسجل |
+| READ_PHONE_STATE | حالة المكالمة |
+| USE_FULL_SCREEN_INTENT | عرض شاشة المكالمة الواردة (استخدام أساسي لتطبيق اتصال) |
+| POST_NOTIFICATIONS, WAKE_LOCK | إشعار المكالمة وإطفاء الشاشة قرب الأذن |
+| ACCESS_COARSE/FINE_LOCATION | عند ضغط «موقعي» فقط |
 
-**غير موجودة:** READ_CALL_LOG, READ_CONTACTS, CALL_PHONE, SYSTEM_ALERT_WINDOW, REQUEST_INSTALL_PACKAGES, INTERNET, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, RECEIVE_BOOT_COMPLETED, FOREGROUND_SERVICE.
-لذلك لا يحتاج «Permissions Declaration Form» لسجل المكالمات.
+لا يوجد: INTERNET, SMS, CAMERA, SYSTEM_ALERT_WINDOW, REQUEST_INSTALL_PACKAGES, قراءة الرسائل.
 
-## Data safety (نموذج بيانات المتجر)
-- Does your app collect or share any required user data types? **No**
-- Is all of the user data collected by your app encrypted in transit? غير منطبق (لا يوجد جمع)
-- Data deletion: غير منطبق؛ البيانات محلية وتُحذف بحذف التطبيق.
-- Privacy policy URL: رابط صفحة privacy.html (انظر 05)
+## Permissions Declaration Form (Call Log)
+- اختر: **Default Phone handler**.
+- English justification: The app is a full default phone handler (ROLE_DIALER) with dialer UI and InCallService. READ_CALL_LOG is used only to show the in-app call history. No data is transmitted; the app has no INTERNET permission.
+
+## Data safety
+- Collect/share any data: **No** (لا INTERNET، لا يغادر شي الجهاز).
 
 ## Prominent disclosure
-موجود داخل التطبيق قبل طلب الإذن: شاشة «إشعار بانتهاء المكالمة» بزر موافق / ليس الآن.
-
-## وصف استخدام READ_PHONE_STATE (إنجليزي للنموذج)
-The app listens to the system phone-state broadcast only to know when a phone call ends, so it can show a notification with quick-reply WhatsApp templates. It does not read the phone number, call log, or contacts, and it does not transmit any data.
-
-## Foreground/background location
-لا يستخدم موقعاً بالخلفية؛ يُقرأ الموقع مرة واحدة عند ضغط المستخدم.
+موجود بالتطبيق قبل طلب الدور والصلاحيات (زر «موافق»/«ليس الآن»).
