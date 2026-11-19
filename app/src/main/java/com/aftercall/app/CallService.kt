@@ -24,6 +24,8 @@ object CallManager {
     val calls = mutableListOf<Call>()
     val meta = HashMap<Call, CallMeta>()
     var service: InCallService? = null
+    var endpoints: List<Any> = emptyList()
+    var currentEndpoint: Any? = null
     private val listeners = mutableListOf<() -> Unit>()
     private val h = Handler(Looper.getMainLooper())
 
@@ -136,17 +138,34 @@ class CallService : InCallService() {
         }
     }
 
+    @android.annotation.TargetApi(34)
+    override fun onAvailableCallEndpointsChanged(availableEndpoints: MutableList<android.telecom.CallEndpoint>) {
+        CallManager.endpoints = availableEndpoints.toList()
+        CallManager.changed()
+    }
+
+    @android.annotation.TargetApi(34)
+    override fun onCallEndpointChanged(callEndpoint: android.telecom.CallEndpoint) {
+        CallManager.currentEndpoint = callEndpoint
+        CallManager.changed()
+    }
+
     override fun onDestroy() {
         if (CallManager.service === this) CallManager.service = null
         super.onDestroy()
     }
 
     private fun channel(nm: NotificationManager) {
-        if (nm.getNotificationChannel("calls") == null) {
-            val ch = NotificationChannel("calls", "المكالمات", NotificationManager.IMPORTANCE_HIGH)
+        if (nm.getNotificationChannel("calls_in") == null) {
+            val ch = NotificationChannel("calls_in", "المكالمات", NotificationManager.IMPORTANCE_HIGH)
             ch.setSound(null, null)
             ch.enableVibration(false)
+            ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             nm.createNotificationChannel(ch)
+            try {
+                nm.deleteNotificationChannel("calls")
+            } catch (e: Exception) {
+            }
         }
     }
 
@@ -177,17 +196,34 @@ class CallService : InCallService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val ringing = p.state == Call.STATE_RINGING
-        val b = Notification.Builder(this, "calls")
-            .setSmallIcon(R.drawable.ic_notif)
-            .setContentTitle(if (ringing) "مكالمة واردة" else "مكالمة")
-            .setContentText(who)
-            .setContentIntent(open)
-            .setCategory(Notification.CATEGORY_CALL)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-        if (ringing || p.state == Call.STATE_DIALING || p.state == Call.STATE_CONNECTING) {
-            b.setFullScreenIntent(open, true)
+        val dialing = p.state == Call.STATE_DIALING || p.state == Call.STATE_CONNECTING
+
+        fun builder(): Notification.Builder {
+            val b = Notification.Builder(this, "calls_in")
+                .setSmallIcon(R.drawable.ic_notif)
+                .setContentTitle(if (ringing) "مكالمة واردة" else "مكالمة")
+                .setContentText(who)
+                .setContentIntent(open)
+                .setCategory(Notification.CATEGORY_CALL)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+            if (ringing || dialing) b.setFullScreenIntent(open, true)
+            return b
         }
+
+        if (ringing && android.os.Build.VERSION.SDK_INT >= 31) {
+            try {
+                val person = android.app.Person.Builder().setName(who).setImportant(true).build()
+                val b = builder().setStyle(
+                    Notification.CallStyle.forIncomingCall(person, act("DECLINE", 3), act("ANSWER", 2))
+                )
+                nm.notify(77, b.build())
+                return
+            } catch (e: Exception) {
+            }
+        }
+        val b = builder()
         if (ringing) {
             b.addAction(Notification.Action.Builder(null, "رد", act("ANSWER", 2)).build())
             b.addAction(Notification.Action.Builder(null, "رفض", act("DECLINE", 3)).build())

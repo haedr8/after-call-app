@@ -31,6 +31,7 @@ class MainActivity : Activity() {
 
     private lateinit var rPerm: SRow
     private lateinit var rDef: SRow
+    private lateinit var rFs: SRow
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy-play.html"
 
@@ -133,6 +134,15 @@ class MainActivity : Activity() {
         st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
         rDef = statusRow(st, "تفعيل") { disclosure() }
         rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
+        rFs = statusRow(st, "سماح") {
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))
+                )
+            } catch (e: Exception) {
+                openAppInfo()
+            }
+        }
         col.addView(st, T.gap(this, 14))
 
         // ---- الأدوات ----
@@ -314,6 +324,9 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         setRow(rDef, Phone.isDefault(this), "حولني هو تطبيق الهاتف", "حولني ليس تطبيق الهاتف الافتراضي")
+        val fsOk = Build.VERSION.SDK_INT < 34 ||
+            (getSystemService(android.app.NotificationManager::class.java)?.canUseFullScreenIntent() ?: true)
+        setRow(rFs, fsOk, "شاشة المكالمة الواردة مسموحة", "اسمح بعرض المكالمة الواردة فوق الشاشة")
         val ok = needed().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
         setRow(rPerm, ok, "الصلاحيات ممنوحة", "الصلاحيات ناقصة")
 

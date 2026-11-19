@@ -188,11 +188,7 @@ class InCallActivity : Activity() {
         val ctl = 0xFF1F4A52.toInt()
 
         if (active) {
-            val route = try {
-                CallManager.service?.callAudioState?.route ?: 0
-            } catch (e: Exception) {
-                0
-            }
+            val route = currentRoute()
             val muted = try {
                 CallManager.service?.callAudioState?.isMuted ?: false
             } catch (e: Exception) {
@@ -219,7 +215,10 @@ class InCallActivity : Activity() {
                 speaker -> "🔊\nسبيكر"
                 else -> "📱\nالأذن"
             }
-            r1.addView(circle(audioLabel, ctl, speaker || bt || wired) { audioPicker(mask, route) }, lp())
+            r1.addView(circle(audioLabel, ctl, speaker || bt || wired) {
+                if (android.os.Build.VERSION.SDK_INT >= 34 && CallManager.endpoints.isNotEmpty()) endpointPicker()
+                else audioPicker(mask, route)
+            }, lp())
             r1.addView(circle("⌨️\nأرقام", ctl) { dtmf(p) }, lp())
             val canHold = p.state == Call.STATE_ACTIVE || p.state == Call.STATE_HOLDING
             r1.addView(
@@ -247,6 +246,58 @@ class InCallActivity : Activity() {
         q.topMargin = dp(12)
         root.addView(r2, q)
         setContentView(root)
+    }
+
+    private fun currentRoute(): Int {
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            val e = CallManager.currentEndpoint
+            if (e is android.telecom.CallEndpoint) {
+                return when (e.endpointType) {
+                    android.telecom.CallEndpoint.TYPE_BLUETOOTH -> CallAudioState.ROUTE_BLUETOOTH
+                    android.telecom.CallEndpoint.TYPE_WIRED_HEADSET -> CallAudioState.ROUTE_WIRED_HEADSET
+                    android.telecom.CallEndpoint.TYPE_SPEAKER -> CallAudioState.ROUTE_SPEAKER
+                    else -> CallAudioState.ROUTE_EARPIECE
+                }
+            }
+        }
+        return try {
+            CallManager.service?.callAudioState?.route ?: 0
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    @android.annotation.TargetApi(34)
+    private fun endpointPicker() {
+        val list = CallManager.endpoints.filterIsInstance<android.telecom.CallEndpoint>()
+            .filter { it.endpointType != android.telecom.CallEndpoint.TYPE_STREAMING }
+        val names = list.map {
+            when (it.endpointType) {
+                android.telecom.CallEndpoint.TYPE_BLUETOOTH -> "🎧 " + it.endpointName
+                android.telecom.CallEndpoint.TYPE_WIRED_HEADSET -> "🎧 سماعة سلكية"
+                android.telecom.CallEndpoint.TYPE_SPEAKER -> "🔊 السبيكر"
+                else -> "📱 سماعة الأذن"
+            }
+        }.toTypedArray()
+        val cur = CallManager.currentEndpoint
+        val i = list.indexOfFirst { it == cur }
+        AlertDialog.Builder(this)
+            .setTitle("مخرج الصوت")
+            .setSingleChoiceItems(names, i) { d, w ->
+                try {
+                    CallManager.service?.requestCallEndpointChange(
+                        list[w], mainExecutor,
+                        object : android.os.OutcomeReceiver<Void, android.telecom.CallEndpointException> {
+                            override fun onResult(result: Void?) {}
+                            override fun onError(error: android.telecom.CallEndpointException) {}
+                        }
+                    )
+                } catch (e: Exception) {
+                }
+                d.dismiss()
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
     }
 
     private fun setRoute(r: Int) {
