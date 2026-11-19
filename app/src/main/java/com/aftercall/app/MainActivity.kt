@@ -32,7 +32,7 @@ class MainActivity : Activity() {
     private lateinit var rPerm: SRow
     private lateinit var rDef: SRow
 
-    private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
+    private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy-play.html"
 
     private val tiktokUser = "haedr.m1"
     private val instagramUser = "haedr.m1"
