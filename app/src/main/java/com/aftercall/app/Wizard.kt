@@ -100,7 +100,7 @@ object Wizard {
     }
 
     private fun perms(a: Activity) {
-        a.requestPermissions(Phone.perms, 1)
+        Grant.request(a, Phone.perms)
     }
 
     private fun open(a: Activity, i: Intent) {

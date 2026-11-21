@@ -133,16 +133,8 @@ class MainActivity : Activity() {
         val st = T.card(this)
         st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
         rDef = statusRow(st, "تفعيل") { disclosure() }
-        rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
-        rFs = statusRow(st, "سماح") {
-            try {
-                startActivity(
-                    Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))
-                )
-            } catch (e: Exception) {
-                openAppInfo()
-            }
-        }
+        rPerm = statusRow(st, "منح") { Grant.request(this, needed()) }
+        rFs = statusRow(st, "سماح") { Grant.fullScreen(this) }
         col.addView(st, T.gap(this, 14))
 
         // ---- الأدوات ----
@@ -237,10 +229,18 @@ class MainActivity : Activity() {
             .show()
     }
 
+    override fun onRequestPermissionsResult(rc: Int, p: Array<out String>, g: IntArray) {
+        super.onRequestPermissionsResult(rc, p, g)
+        if (rc == 1) {
+            Grant.afterResult(this, needed())
+            refresh()
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 77 && Phone.isDefault(this)) requestPermissions(needed(), 1)
+        if (requestCode == 77 && Phone.isDefault(this)) Grant.request(this, needed())
     }
 
     private fun showHow() {
