@@ -29,6 +29,10 @@ class DialerActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         val d = intent?.data
+        if (intent?.action == Intent.ACTION_DIAL && !Phone.isDefault(this) && Phone.forwardDial(this, d)) {
+            finish()
+            return
+        }
         if (d != null && d.scheme == "tel") {
             number.append(Uri.decode(d.schemeSpecificPart ?: ""))
             if (number.isNotBlank() && Store.getBool(this, "intercept", true)) {

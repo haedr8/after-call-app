@@ -33,6 +33,21 @@ object Phone {
         false
     }
 
+    // إذا حولني ليس تطبيق الهاتف الافتراضي، نمرر الاتصال لتطبيق الهاتف الحقيقي بدل ما نلتقطه
+    fun forwardDial(a: Activity, data: Uri?): Boolean {
+        return try {
+            val tm = a.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+            val pkg = tm.defaultDialerPackage
+            if (pkg == null || pkg == a.packageName) return false
+            a.startActivity(
+                Intent(Intent.ACTION_DIAL, data).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun roleIntent(c: Context): Intent {
         if (Build.VERSION.SDK_INT >= 29) {
             val rm = c.getSystemService(RoleManager::class.java)

@@ -10,6 +10,11 @@ class TelActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         val d = intent?.data
+        if (!Phone.isDefault(this) && Phone.forwardDial(this, d)) {
+            finish()
+            overridePendingTransition(0, 0)
+            return
+        }
         val n = if (d != null && d.scheme == "tel") Uri.decode(d.schemeSpecificPart ?: "").trim() else ""
         if (n.isNotBlank() && Store.getBool(this, "intercept", true)) {
             startActivity(
