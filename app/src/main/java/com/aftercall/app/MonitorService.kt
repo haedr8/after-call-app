@@ -129,6 +129,11 @@ class MonitorService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null) Diag.log(this, "restart by system (service was killed)")
+        Remote.refresh(this, false)
+        if (Remote.blocked(this) != null) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         attach()
         return START_STICKY
     }

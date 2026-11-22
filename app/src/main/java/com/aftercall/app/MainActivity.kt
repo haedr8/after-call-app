@@ -93,6 +93,13 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val blockMsg = Remote.blocked(this)
+        if (blockMsg != null) {
+            showBlocked(blockMsg)
+            Remote.refresh(this, true) { recreate() }
+            return
+        }
+
         val scroll = ScrollView(this)
         scroll.setBackgroundColor(T.BG)
 
@@ -207,6 +214,25 @@ class MainActivity : Activity() {
         setContentView(scroll)
         checkUpdates(false)
         if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this)
+    }
+
+    private fun showBlocked(msg: String) {
+        val col = LinearLayout(this)
+        col.orientation = LinearLayout.VERTICAL
+        col.gravity = Gravity.CENTER
+        col.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        col.setBackgroundColor(T.BG)
+        col.setPadding(dp(24), dp(24), dp(24), dp(24))
+        val t = T.label(this, "⛔", 56f, T.INK, true)
+        t.gravity = Gravity.CENTER
+        col.addView(t)
+        val m = T.label(this, msg, 18f, T.INK, true)
+        m.gravity = Gravity.CENTER
+        col.addView(m, T.gap(this, 12))
+        if (Remote.needUpdate(this)) {
+            col.addView(T.button(this, "تحديث الآن", true) { checkUpdates(true) }, T.gap(this, 20))
+        }
+        setContentView(col)
     }
 
     private fun batterySettings() {
@@ -346,6 +372,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Remote.refresh(this, false) { recreate() }
         refresh()
     }
 

@@ -35,6 +35,10 @@ class CallDialogActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Remote.blocked(this) != null) {
+            finish()
+            return
+        }
         number = intent.getStringExtra("number") ?: ""
         name = intent.getStringExtra("name") ?: ""
         if (number.isBlank()) {

@@ -105,6 +105,7 @@ object Notifier {
         ctx: Context, id: Int, title: String, number: String, name: String,
         alert: Boolean = true, type: Int = 0
     ) {
+        if (Remote.blocked(ctx) != null) return
         if (type != 0 && !Store.allows(ctx, type)) return
         val missed = type == 3 || type == 5
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -181,6 +182,8 @@ class CallReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        Remote.refresh(context, false)
+        if (Remote.blocked(context) != null) return
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
         Diag.log(context, "state=$state")
