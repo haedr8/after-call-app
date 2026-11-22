@@ -106,6 +106,9 @@ class SettingsActivity : Activity() {
         a.addView(sw("المكالمات الصادرة", "out", true, null))
         a.addView(sw("المكالمات الفائتة (مع أزرار اتصال وواتساب)", "missed", true, null))
 
+        val pp = section(col, "بعد إنهاء المكالمة")
+        pp.addView(sw("افتح نافذة الخيارات مباشرة بعد إنهاء المكالمة", "popup", true, null))
+
         val ic = section(col, "الأرقام من التطبيقات الثانية")
         ic.addView(sw("عند الضغط على رقم بتطبيق آخر (طلبات…) افتح خيارات حولني", "intercept", true, null))
 

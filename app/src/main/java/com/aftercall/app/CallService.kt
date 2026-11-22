@@ -136,6 +136,17 @@ class CallService : InCallService() {
             Notifier.show(applicationContext, 1, "انتهت المكالمة", m.number, m.name, true, type)
         } catch (e: Exception) {
         }
+        // نافذة الخيارات مباشرة بعد إنهاء مكالمة (واردة أو صادرة) إذا الميزة مفعّلة
+        if ((type == 1 || type == 2) && Store.getBool(this, "popup", true) && Store.allows(this, type)) {
+            try {
+                startActivity(
+                    Intent(this, CallDialogActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra("number", m.number).putExtra("name", m.name)
+                )
+            } catch (e: Exception) {
+            }
+        }
     }
 
     @android.annotation.TargetApi(34)
