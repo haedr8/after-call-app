@@ -97,6 +97,11 @@ class DialerActivity : Activity() {
         display.textDirection = View.TEXT_DIRECTION_LTR
         display.maxLines = 1
         display.setAutoSizeTextTypeUniformWithConfiguration(18, 34, 1, TypedValue.COMPLEX_UNIT_SP)
+        display.hint = "اضغط مطولاً للصق رقم"
+        display.setOnLongClickListener {
+            showClipMenu()
+            true
+        }
         root.addView(display, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.8f))
         root.addView(nameV)
 
@@ -129,6 +134,51 @@ class DialerActivity : Activity() {
         root.addView(last, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
         update()
+    }
+
+    private fun cleanNumber(raw: String): String {
+        val sb = StringBuilder()
+        for (ch in raw) {
+            when (ch) {
+                in '0'..'9', '+', '*', '#' -> sb.append(ch)
+                in '٠'..'٩' -> sb.append(ch - '٠')
+                in '۰'..'۹' -> sb.append(ch - '۰')
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun showClipMenu() {
+        val items = arrayOf("📋 لصق رقم", "📄 نسخ الرقم", "🗑 مسح")
+        android.app.AlertDialog.Builder(this)
+            .setItems(items) { _, w ->
+                val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                when (w) {
+                    0 -> {
+                        val t = try {
+                            cm.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString() ?: ""
+                        } catch (e: Exception) {
+                            ""
+                        }
+                        val n = cleanNumber(t)
+                        if (n.isEmpty()) {
+                            Toast.makeText(this, "ما كو رقم منسوخ", Toast.LENGTH_SHORT).show()
+                        } else {
+                            number = StringBuilder(n)
+                            update()
+                        }
+                    }
+                    1 -> if (number.isNotEmpty()) {
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("number", number.toString()))
+                        Toast.makeText(this, "تم النسخ", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        number.setLength(0)
+                        update()
+                    }
+                }
+            }
+            .show()
     }
 
     private fun key(ch: Char): View {
