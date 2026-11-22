@@ -105,7 +105,7 @@ class DialerActivity : Activity() {
         }
         root.addView(display, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         root.addView(nameV)
-        val hintV = T.label(this, "اضغط مطولاً على الرقم للصق أو النسخ", 12f, T.MUTED)
+        val hintV = T.label(this, "اضغط مطولاً على الرقم للصق أو النسخ  •  زر الاتصال: خيارات، ومطولاً: اتصال مباشر", 12f, T.MUTED)
         hintV.gravity = Gravity.CENTER
         hintV.tag = "hint"
         root.addView(hintV)
@@ -127,6 +127,10 @@ class DialerActivity : Activity() {
         last.orientation = LinearLayout.HORIZONTAL
         val contacts = T.tonal(this, "👤") { startActivity(Intent(this, ContactsActivity::class.java)) }
         val call = T.button(this, "📞", true) { doCall() }
+        call.setOnLongClickListener {
+            if (number.isNotEmpty()) Phone.place(this, number.toString())
+            true
+        }
         val del = T.tonal(this, "⌫") { backspace() }
         del.setOnLongClickListener {
             number.setLength(0)
@@ -241,7 +245,11 @@ class DialerActivity : Activity() {
             }
             return
         }
-        Phone.place(this, number.toString())
+        val n = number.toString()
+        startActivity(
+            Intent(this, CallDialogActivity::class.java)
+                .putExtra("number", n).putExtra("name", Phone.name(this, n))
+        )
     }
 
     private fun pick() {
