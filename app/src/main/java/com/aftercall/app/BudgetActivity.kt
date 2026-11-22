@@ -173,6 +173,34 @@ class BudgetActivity : Activity() {
         }
         col.addView(st, T.gap(this, 14))
 
+        // الديون
+        val debts = Budget.debts(this)
+        val active = debts.filter { it.left > 0 }
+        val oweTotal = active.filter { it.owe }.sumOf { it.left }
+        val owedTotal = active.filter { !it.owe }.sumOf { it.left }
+        val dc = T.card(this)
+        dc.addView(T.label(this, "💳 الديون", 16f, T.INK, true))
+        dc.addView(T.label(this, "عليك (مداين): " + Budget.fmt(oweTotal), 14f, if (oweTotal > 0) red else T.INK, true), T.gap(this, 6))
+        dc.addView(T.label(this, "لك عند الناس: " + Budget.fmt(owedTotal), 14f, if (owedTotal > 0) T.OK else T.INK, true), T.gap(this, 2))
+        for (d in active.sortedByDescending { it.t }) {
+            val r = T.card(this)
+            r.addView(
+                T.label(
+                    this,
+                    (if (d.owe) "🔴 عليّ لـ " + d.who else "🟢 " + d.who + " عليه لي") +
+                        "  —  " + Budget.fmt(d.left),
+                    15f, if (d.owe) red else T.OK, true
+                )
+            )
+            val sub2 = "من أصل " + Budget.fmt(d.total) + (if (d.paid > 0) "  •  سُدد " + Budget.fmt(d.paid) else "") +
+                (if (d.note.isNotBlank()) "  •  " + d.note else "")
+            r.addView(T.label(this, sub2, 12f, T.MUTED))
+            r.setOnClickListener { debtMenu(d) }
+            dc.addView(r, T.gap(this, 8))
+        }
+        dc.addView(T.button(this, "➕ دين جديد", false) { askDebt() }, T.gap(this, 10))
+        col.addView(dc, T.gap(this, 14))
+
         // وين راحت فلوسك
         val by = Budget.byCategory(list)
         if (by.isNotEmpty()) {
@@ -394,6 +422,100 @@ class BudgetActivity : Activity() {
                 AlertDialog.Builder(this).setMessage(bodies[w]).setPositiveButton("تمام", null).show()
             }
             .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun askDebt() {
+        val rg = android.widget.RadioGroup(this)
+        rg.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val r1 = android.widget.RadioButton(this)
+        r1.text = "اقترضت من شخص (أنا مداين)"
+        r1.id = 1001
+        val r2 = android.widget.RadioButton(this)
+        r2.text = "أقرضت شخص (مداينه)"
+        r2.id = 1002
+        rg.addView(r1)
+        rg.addView(r2)
+        rg.check(1001)
+        val who = input("اسم الشخص", false)
+        val amt = input("المبلغ", true)
+        val note = input("ملاحظة (اختياري)", false)
+        val cb = CheckBox(this)
+        cb.text = "سجّل المبلغ بميزانيتي (يُضاف لرصيدي إذا اقترضت، ويُخصم إذا أقرضت)"
+        cb.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        cb.isChecked = true
+        AlertDialog.Builder(this)
+            .setTitle("دين جديد")
+            .setView(ScrollView(this).also { it.addView(box(rg, who, amt, note, cb)) })
+            .setPositiveButton("حفظ") { _, _ ->
+                val v = Budget.parse(amt.text.toString())
+                val name = who.text.toString().trim()
+                if (v <= 0 || name.isEmpty()) {
+                    Toast.makeText(this, "اكتب الاسم والمبلغ", Toast.LENGTH_SHORT).show()
+                } else {
+                    val owe = rg.checkedRadioButtonId == 1001
+                    val now = System.currentTimeMillis()
+                    Budget.addDebt(this, Debt(now, name, v, 0L, owe, note.text.toString().trim(), now))
+                    if (cb.isChecked) {
+                        Budget.add(
+                            this,
+                            Entry(now + 1, now, v, if (owe) "💳 دين من " + name else "💳 سلفة لـ " + name, "", owe)
+                        )
+                    }
+                    refresh()
+                }
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun debtMenu(d: Debt) {
+        AlertDialog.Builder(this)
+            .setTitle(d.who + " — " + Budget.fmt(d.left))
+            .setItems(arrayOf(if (d.owe) "💸 سددت دفعة" else "💵 استلمت دفعة", "✅ تم السداد كاملاً", "🗑 حذف")) { _, w ->
+                when (w) {
+                    0 -> askPayment(d, false)
+                    1 -> askPayment(d, true)
+                    else -> AlertDialog.Builder(this)
+                        .setTitle("حذف هذا الدين؟")
+                        .setPositiveButton("حذف") { _, _ ->
+                            Budget.deleteDebt(this, d.id)
+                            refresh()
+                        }
+                        .setNegativeButton("إلغاء", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun askPayment(d: Debt, full: Boolean) {
+        val amt = input("المبلغ", true, if (full) d.left.toString() else "")
+        val cb = CheckBox(this)
+        cb.text = if (d.owe) "سجّلها بمصاريفي (تُخصم من رصيدي)" else "سجّلها بميزانيتي (تُضاف لرصيدي)"
+        cb.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        cb.isChecked = true
+        AlertDialog.Builder(this)
+            .setTitle(if (d.owe) "سداد لـ " + d.who else "استلام من " + d.who)
+            .setView(box(amt, cb))
+            .setPositiveButton("حفظ") { _, _ ->
+                val v = Budget.parse(amt.text.toString()).coerceAtMost(d.left)
+                if (v <= 0) {
+                    Toast.makeText(this, "اكتب مبلغ صحيح", Toast.LENGTH_SHORT).show()
+                } else {
+                    Budget.replaceDebt(this, Debt(d.id, d.who, d.total, d.paid + v, d.owe, d.note, d.t))
+                    if (cb.isChecked) {
+                        val now = System.currentTimeMillis()
+                        Budget.add(
+                            this,
+                            Entry(now, now, v, if (d.owe) "💳 سداد دين لـ " + d.who else "💳 تسديد من " + d.who, "", !d.owe)
+                        )
+                    }
+                    refresh()
+                }
+            }
+            .setNegativeButton("إلغاء", null)
             .show()
     }
 

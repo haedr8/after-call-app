@@ -10,6 +10,13 @@ class Entry(
     val cat: String, val note: String, val income: Boolean
 )
 
+class Debt(
+    val id: Long, val who: String, val total: Long, val paid: Long,
+    val owe: Boolean, val note: String, val t: Long
+) {
+    val left: Long get() = (total - paid).coerceAtLeast(0L)
+}
+
 // بيانات الميزانية محفوظة على الهاتف فقط
 object Budget {
     val defaultCats = listOf(
@@ -154,5 +161,51 @@ object Budget {
             .putLong("start", System.currentTimeMillis())
             .putLong("salary", if (carry) newSalary + rem else newSalary)
             .apply()
+    }
+
+    fun debts(c: Context): MutableList<Debt> {
+        val out = ArrayList<Debt>()
+        try {
+            val a = JSONArray(p(c).getString("debts", "[]"))
+            for (i in 0 until a.length()) {
+                val o = a.getJSONObject(i)
+                out.add(
+                    Debt(
+                        o.getLong("id"), o.optString("w"), o.getLong("a"), o.optLong("p", 0L),
+                        o.optBoolean("owe", true), o.optString("n"), o.optLong("t")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+        }
+        return out
+    }
+
+    private fun saveDebts(c: Context, l: List<Debt>) {
+        val a = JSONArray()
+        for (d in l) {
+            a.put(
+                JSONObject().put("id", d.id).put("w", d.who).put("a", d.total).put("p", d.paid)
+                    .put("owe", d.owe).put("n", d.note).put("t", d.t)
+            )
+        }
+        p(c).edit().putString("debts", a.toString()).apply()
+    }
+
+    fun addDebt(c: Context, d: Debt) {
+        val l = debts(c)
+        l.add(d)
+        saveDebts(c, l)
+    }
+
+    fun replaceDebt(c: Context, d: Debt) {
+        val l = debts(c)
+        val i = l.indexOfFirst { it.id == d.id }
+        if (i >= 0) l[i] = d
+        saveDebts(c, l)
+    }
+
+    fun deleteDebt(c: Context, id: Long) {
+        saveDebts(c, debts(c).filter { it.id != id })
     }
 }
