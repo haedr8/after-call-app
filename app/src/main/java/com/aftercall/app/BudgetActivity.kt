@@ -217,6 +217,9 @@ class BudgetActivity : Activity() {
 
         // آخر العمليات
         col.addView(T.label(this, "🕘 العمليات", 16f, T.INK, true), T.gap(this, 16))
+        if (list.isNotEmpty()) {
+            col.addView(T.label(this, "اضغط على أي عملية لتعديلها أو حذفها", 12f, T.MUTED), T.gap(this, 2))
+        }
         if (list.isEmpty()) {
             col.addView(T.label(this, "ما كو عمليات بعد. اضغط على تصنيف لتسجل مصروف.", 14f, T.MUTED), T.gap(this, 6))
         }
@@ -240,6 +243,10 @@ class BudgetActivity : Activity() {
                 showAll = true
                 refresh()
             }, T.gap(this, 8))
+        }
+
+        if (list.isNotEmpty()) {
+            col.addView(T.button(this, "🗑 مسح كل العمليات (بدون دورة جديدة)", false) { askClearAll(list.size) }, T.gap(this, 14))
         }
 
         // أدوات
@@ -354,6 +361,18 @@ class BudgetActivity : Activity() {
                 }
             }
             .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun askClearAll(n: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("مسح كل العمليات؟")
+            .setMessage("تُحذف " + n + " عملية من الدورة الحالية ويبقى راتبك كما هو. لا يمكن التراجع.")
+            .setPositiveButton("مسح") { _, _ ->
+                for (e in Budget.entries(this)) Budget.delete(this, e.id)
+                refresh()
+            }
+            .setNegativeButton("إلغاء", null)
             .show()
     }
 
