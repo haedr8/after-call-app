@@ -315,6 +315,9 @@ class CallDialogActivity : Activity() {
         if (requestCode == 21 && grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
             sendLocation()
         }
+        if (requestCode == 41 && grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
+            callBack()
+        }
     }
 
     private fun withWa(go: (String?) -> Unit) {
@@ -420,13 +423,13 @@ class CallDialogActivity : Activity() {
     }
 
     private fun callBack() {
-        if (number.isNotBlank() && Phone.granted(this, Manifest.permission.CALL_PHONE)) {
+        if (number.isNotBlank()) {
+            // يبدأ الاتصال مباشرة، وإذا الصلاحية ناقصة يطلبها ثم يكمل
             if (Phone.place(this, number)) finish()
             return
         }
-        val uri = if (number.isBlank()) Uri.parse("tel:") else Uri.parse("tel:" + Uri.encode(number))
         try {
-            startActivity(Intent(Intent.ACTION_DIAL, uri))
+            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:")))
         } catch (e: Exception) {
             Toast.makeText(this, "تعذر فتح الاتصال", Toast.LENGTH_SHORT).show()
         }

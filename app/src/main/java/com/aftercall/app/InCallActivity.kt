@@ -24,6 +24,9 @@ class InCallActivity : Activity() {
     private val h = Handler(Looper.getMainLooper())
     private var wake: PowerManager.WakeLock? = null
     private var ended = false
+    private var stateV: TextView? = null
+    private var sig = ""
+    private var simAsked = false
     private val bg = 0xFF0F2A30.toInt()
 
     private val listener: () -> Unit = { render() }
@@ -147,6 +150,18 @@ class InCallActivity : Activity() {
             return
         }
         val m = CallManager.meta[p] ?: CallMeta()
+        val muted0 = try {
+            CallManager.service?.callAudioState?.isMuted ?: false
+        } catch (e: Exception) {
+            false
+        }
+        val sigNow = p.state.toString() + "|" + m.name + "|" + m.number + "|" +
+            CallManager.others().joinToString(",") { it.state.toString() } + "|" + currentRoute() + "|" + muted0
+        if (sigNow == sig && stateV != null) {
+            stateV?.text = stateText(p)
+            return
+        }
+        sig = sigNow
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundColor(bg)
@@ -154,7 +169,9 @@ class InCallActivity : Activity() {
         Ui.fit(root, dp(16), dp(24))
         root.layoutDirection = View.LAYOUT_DIRECTION_RTL
 
-        root.addView(big(stateText(p), 16f, 0xFFB7D3D6.toInt()))
+        val sv0 = big(stateText(p), 16f, 0xFFB7D3D6.toInt())
+        stateV = sv0
+        root.addView(sv0)
         val title = when {
             m.name.isNotBlank() -> m.name
             m.number.isNotBlank() -> m.number
@@ -246,6 +263,32 @@ class InCallActivity : Activity() {
         q.topMargin = dp(12)
         root.addView(r2, q)
         setContentView(root)
+        if (p.state == Call.STATE_SELECT_PHONE_ACCOUNT) chooseSim(p) else simAsked = false
+    }
+
+    private fun chooseSim(p: Call) {
+        if (simAsked) return
+        simAsked = true
+        try {
+            val tm = getSystemService(Context.TELECOM_SERVICE) as android.telecom.TelecomManager
+            val accts = tm.callCapablePhoneAccounts
+            if (accts.isEmpty()) {
+                p.disconnect()
+                return
+            }
+            val names = accts.map { tm.getPhoneAccount(it)?.label?.toString() ?: "SIM" }.toTypedArray()
+            AlertDialog.Builder(this)
+                .setTitle("اتصال عبر أي شريحة؟")
+                .setItems(names) { _, w -> p.phoneAccountSelected(accts[w], false) }
+                .setNegativeButton("إلغاء") { _, _ -> p.disconnect() }
+                .setOnCancelListener { p.disconnect() }
+                .show()
+        } catch (e: Exception) {
+            try {
+                p.disconnect()
+            } catch (e2: Exception) {
+            }
+        }
     }
 
     private fun currentRoute(): Int {
