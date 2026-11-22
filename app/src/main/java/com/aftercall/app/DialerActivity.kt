@@ -22,6 +22,7 @@ class DialerActivity : Activity() {
     private var number = StringBuilder()
     private lateinit var display: TextView
     private lateinit var nameV: TextView
+    private lateinit var hint: TextView
     private var tone: ToneGenerator? = null
 
     private fun dp(v: Int) = T.dp(this, v)
@@ -96,25 +97,30 @@ class DialerActivity : Activity() {
         display.gravity = Gravity.CENTER
         display.textDirection = View.TEXT_DIRECTION_LTR
         display.maxLines = 1
-        display.setAutoSizeTextTypeUniformWithConfiguration(18, 34, 1, TypedValue.COMPLEX_UNIT_SP)
-        display.hint = "اضغط مطولاً للصق رقم"
+        display.setAutoSizeTextTypeUniformWithConfiguration(20, 34, 1, TypedValue.COMPLEX_UNIT_SP)
+        display.minHeight = dp(56)
         display.setOnLongClickListener {
             showClipMenu()
             true
         }
-        root.addView(display, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.8f))
+        root.addView(display, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         root.addView(nameV)
+        val hintV = T.label(this, "اضغط مطولاً على الرقم للصق أو النسخ", 12f, T.MUTED)
+        hintV.gravity = Gravity.CENTER
+        hintV.tag = "hint"
+        root.addView(hintV)
+        hint = hintV
+
+        val keyH = (resources.displayMetrics.heightPixels * 0.075f).toInt().coerceIn(dp(50), dp(66))
 
         val rows = listOf("123", "456", "789", "*0#")
         for (r in rows) {
             val row = LinearLayout(this)
             row.orientation = LinearLayout.HORIZONTAL
-            for (ch in r) row.addView(key(ch), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).also {
-                it.setMargins(dp(4), dp(4), dp(4), dp(4))
+            for (ch in r) row.addView(key(ch), LinearLayout.LayoutParams(0, keyH, 1f).also {
+                it.setMargins(dp(4), dp(3), dp(4), dp(3))
             })
-            root.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).also {
-                it.height = 0
-            })
+            root.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
 
         val last = LinearLayout(this)
@@ -127,11 +133,11 @@ class DialerActivity : Activity() {
             update()
             true
         }
-        val lpx = { LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).also { it.setMargins(dp(4), dp(4), dp(4), dp(4)) } }
+        val lpx = { LinearLayout.LayoutParams(0, keyH, 1f).also { it.setMargins(dp(4), dp(3), dp(4), dp(3)) } }
         last.addView(contacts, lpx())
         last.addView(call, lpx())
         last.addView(del, lpx())
-        root.addView(last, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(last, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         setContentView(root)
         update()
     }
@@ -217,6 +223,7 @@ class DialerActivity : Activity() {
 
     private fun update() {
         display.text = number.toString()
+        hint.visibility = if (number.isEmpty()) View.VISIBLE else View.GONE
         nameV.text = if (number.length >= 3) Phone.name(this, number.toString()) else ""
     }
 
