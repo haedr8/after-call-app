@@ -136,6 +136,7 @@ class MainActivity : Activity() {
         rPerm = statusRow(st, "منح") { Grant.request(this, needed()) }
         rFs = statusRow(st, "سماح") { Grant.fullScreen(this) }
         col.addView(st, T.gap(this, 14))
+        col.addView(T.button(this, "💰 مصاريفي", true) { startActivity(Intent(this, BudgetActivity::class.java)) }, T.gap(this, 12))
 
         // ---- الأدوات ----
         col.addView(T.label(this, "الأدوات", 14f, T.MUTED, true), T.gap(this, 18))

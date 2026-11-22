@@ -19,6 +19,11 @@ WhatsApp replies after calls:
 • Editable templates, notes per number, backup
 • Works with WhatsApp and WhatsApp Business
 
+My expenses:
+• Track your salary and spending by category (fuel, maintenance, rent, food…) and see where your money went
+• Personal debt tracker: money you borrowed or lent, with repayments
+• Daily and weekly stats; data stays on your phone
+
 Privacy:
 • Sends no data anywhere; the app has no internet permission
 • Reads call log and contacts only to display them in the app
