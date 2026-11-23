@@ -90,7 +90,12 @@ class CallDialogActivity : Activity() {
                 i += 2
             }
             addRow(root, Opt("📍 موقعي", true) { sendLocation() }, Opt("📝 ملاحظة", true) { editNote() })
-            addRow(root, Opt("✉️ SMS", true) { openSms() }, Opt("إلغاء", true) { finish() })
+            if (name.isBlank()) {
+                addRow(root, Opt("💾 حفظ بجهات الاتصال", true) { saveContact() }, Opt("✉️ SMS", true) { openSms() })
+                addRow(root, Opt("إلغاء", true) { finish() }, null)
+            } else {
+                addRow(root, Opt("✉️ SMS", true) { openSms() }, Opt("إلغاء", true) { finish() })
+            }
         } else {
             val msg = T.label(
                 this, "اختر رسالة لفتح واتساب، أو حدّد الرقم أولاً لإرسالها له مباشرة.",
@@ -431,6 +436,17 @@ class CallDialogActivity : Activity() {
             }
         }
         finish()
+    }
+
+    private fun saveContact() {
+        try {
+            val i = Intent(Intent.ACTION_INSERT, android.provider.ContactsContract.Contacts.CONTENT_URI)
+            i.putExtra(android.provider.ContactsContract.Intents.Insert.PHONE, number)
+            startActivity(i)
+            finish()
+        } catch (e: Exception) {
+            Toast.makeText(this, "تعذر فتح جهات الاتصال", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun openSms() {
