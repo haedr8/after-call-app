@@ -189,13 +189,18 @@ class ContactsActivity : Activity() {
         try {
             val n = contentResolver.delete(ContactsContract.Contacts.getLookupUri(c.id, c.lookup), null, null)
             Toast.makeText(this, if (n > 0) "تم الحذف" else "تعذر الحذف", Toast.LENGTH_SHORT).show()
+            if (n > 0) {
+                all.removeAll { it.id == c.id }
+                filter(lastQ)
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "تعذر الحذف", Toast.LENGTH_SHORT).show()
         }
-        load()
     }
 
+    private var lastQ = ""
     private fun filter(q: String) {
+        lastQ = q
         val t = q.trim().lowercase()
         shown = if (t.isEmpty()) all.toList() else {
             val d = t.filter { it.isDigit() }

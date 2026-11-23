@@ -148,17 +148,33 @@ object Store {
         }
     }
 
-    fun waNumber(c: Context, number: String): String {
-        val raw = number.trim().replace("(0)", "")
-        val digits = raw.filter { it.isDigit() }
-        if (raw.startsWith("+")) return digits
-        if (digits.startsWith("00")) return digits.drop(2)
-        try {
-            val e164 = android.telephony.PhoneNumberUtils.formatNumberToE164(raw, countryIso(c))
-            if (!e164.isNullOrEmpty()) return e164.filter { it.isDigit() }
-        } catch (e: Exception) {
+    fun ascii(s: String): String {
+        val sb = StringBuilder()
+        for (ch in s) {
+            val d = Character.digit(ch, 10)
+            if (d >= 0) sb.append(('0' + d)) else if (ch == '+') sb.append('+')
         }
-        return if (digits.startsWith("0")) "964" + digits.drop(1) else digits
+        return sb.toString()
+    }
+
+    fun waNumber(c: Context, number: String): String {
+        val raw = ascii(number.replace("(0)", "").trim())
+        val digits = raw.filter { it in '0'..'9' }
+        var out: String
+        if (raw.startsWith("+")) out = digits
+        else if (digits.startsWith("00")) out = digits.drop(2)
+        else {
+            var e = ""
+            try {
+                e = (android.telephony.PhoneNumberUtils.formatNumberToE164(raw, countryIso(c)) ?: "").filter { it in '0'..'9' }
+            } catch (x: Exception) { }
+            out = if (e.isNotEmpty()) e
+            else if (digits.startsWith("0")) "964" + digits.drop(1)
+            else if (digits.length <= 10) "964" + digits
+            else digits
+        }
+        if (out.startsWith("9640")) out = "964" + out.drop(4)
+        return out
     }
 
     private val boolKeys = listOf("in", "out", "missed")

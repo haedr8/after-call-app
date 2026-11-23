@@ -345,6 +345,7 @@ class CallDialogActivity : Activity() {
         val business = pkg == Store.WA_B
         val mime = if (business) "vnd.android.cursor.item/vnd.com.whatsapp.w4b.voip.call"
         else "vnd.android.cursor.item/vnd.com.whatsapp.voip.call"
+        val tail = n.takeLast(9)
         var uri: Uri? = null
         if (Phone.granted(this, Manifest.permission.READ_CONTACTS)) {
             try {
@@ -354,8 +355,8 @@ class CallDialogActivity : Activity() {
                     android.provider.ContactsContract.Data.MIMETYPE + "=?", arrayOf(mime), null
                 )?.use { c ->
                     while (c.moveToNext()) {
-                        val d = c.getString(1) ?: ""
-                        if (n.isNotBlank() && d.startsWith(n)) {
+                        val d = Store.ascii((c.getString(1) ?: "").substringBefore("@")).filter { it in '0'..'9' }
+                        if (tail.length >= 7 && d.endsWith(tail)) {
                             uri = android.content.ContentUris.withAppendedId(
                                 android.provider.ContactsContract.Data.CONTENT_URI, c.getLong(0)
                             )
