@@ -2,6 +2,7 @@ package com.aftercall.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -15,11 +16,13 @@ import android.widget.BaseAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ListView
+import android.widget.Toast
 import android.widget.TextView
 
 class ContactsActivity : Activity() {
 
-    private class C(val name: String, val number: String)
+    private class C(val name: String, val number: String, val norm: String, val id: Long, val lookup: String)
+    private var pendingDelete: C? = null
 
     private val all = ArrayList<C>()
     private var shown: List<C> = emptyList()
@@ -94,11 +97,17 @@ class ContactsActivity : Activity() {
         list = ListView(this)
         list.adapter = adapter
         list.setOnItemClickListener { _, _, i, _ ->
+            if (i < 0 || i >= shown.size) return@setOnItemClickListener
             val c = shown[i]
             startActivity(
                 Intent(this, CallDialogActivity::class.java)
-                    .putExtra("number", c.number).putExtra("name", c.name)
+                    .putExtra("number", if (c.norm.isNotBlank()) c.norm else c.number)
+                    .putExtra("name", c.name)
             )
+        }
+        list.setOnItemLongClickListener { _, _, i, _ ->
+            if (i >= 0 && i < shown.size) menu(shown[i])
+            true
         }
         root.addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
@@ -117,7 +126,10 @@ class ContactsActivity : Activity() {
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 arrayOf(
                     ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    ContactsContract.CommonDataKinds.Phone.NUMBER
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER,
+                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                    ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY
                 ),
                 null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " COLLATE LOCALIZED ASC"
             )?.use { c ->
@@ -125,13 +137,62 @@ class ContactsActivity : Activity() {
                 while (c.moveToNext()) {
                     val n = c.getString(1) ?: continue
                     val key = (c.getString(0) ?: "") + n.filter { it.isDigit() }
-                    if (seen.add(key)) all.add(C(c.getString(0) ?: n, n))
+                    if (seen.add(key)) all.add(C(c.getString(0) ?: n, n, c.getString(2) ?: "", c.getLong(3), c.getString(4) ?: ""))
                 }
             }
         } catch (e: Exception) {
         }
         info.text = if (all.isEmpty()) "لا توجد جهات اتصال" else ""
         filter("")
+    }
+
+    private fun menu(c: C) {
+        AlertDialog.Builder(this)
+            .setTitle(c.name)
+            .setItems(arrayOf("✏️ تعديل جهة الاتصال", "🗑 حذف جهة الاتصال", "📋 نسخ الرقم")) { _, w ->
+                when (w) {
+                    0 -> try {
+                        val u = ContactsContract.Contacts.getLookupUri(c.id, c.lookup)
+                        startActivity(
+                            Intent(Intent.ACTION_EDIT).setDataAndType(u, ContactsContract.Contacts.CONTENT_ITEM_TYPE)
+                        )
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "تعذر فتح التعديل", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> askDelete(c)
+                    else -> {
+                        val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("number", c.number))
+                        Toast.makeText(this, "تم النسخ", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun askDelete(c: C) {
+        AlertDialog.Builder(this)
+            .setTitle("حذف «" + c.name + "»؟")
+            .setMessage("تُحذف جهة الاتصال من هاتفك بكل أرقامها، ولا يمكن التراجع.")
+            .setPositiveButton("حذف") { _, _ -> doDelete(c) }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun doDelete(c: C) {
+        if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            pendingDelete = c
+            Grant.request(this, arrayOf(Manifest.permission.WRITE_CONTACTS), 52)
+            return
+        }
+        try {
+            val n = contentResolver.delete(ContactsContract.Contacts.getLookupUri(c.id, c.lookup), null, null)
+            Toast.makeText(this, if (n > 0) "تم الحذف" else "تعذر الحذف", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "تعذر الحذف", Toast.LENGTH_SHORT).show()
+        }
+        load()
     }
 
     private fun filter(q: String) {
@@ -148,6 +209,11 @@ class ContactsActivity : Activity() {
     override fun onRequestPermissionsResult(rc: Int, p: Array<out String>, g: IntArray) {
         super.onRequestPermissionsResult(rc, p, g)
         if (rc == 51) load()
+        if (rc == 52) {
+            val d = pendingDelete
+            pendingDelete = null
+            if (d != null && g.isNotEmpty() && g[0] == PackageManager.PERMISSION_GRANTED) doDelete(d)
+        }
     }
 
     override fun onResume() {

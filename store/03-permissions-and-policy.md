@@ -25,3 +25,6 @@
 
 ## Prominent disclosure
 موجود بالتطبيق قبل طلب الدور والصلاحيات (زر «موافق»/«ليس الآن»).
+
+## WRITE_CONTACTS (يُطلب فقط عند ضغط «حذف جهة الاتصال»)
+English: Used only when the user explicitly deletes a contact from the in-app contact list. The user confirms each deletion; nothing is sent anywhere.

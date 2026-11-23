@@ -149,7 +149,7 @@ object Store {
     }
 
     fun waNumber(c: Context, number: String): String {
-        val raw = number.trim()
+        val raw = number.trim().replace("(0)", "")
         val digits = raw.filter { it.isDigit() }
         if (raw.startsWith("+")) return digits
         if (digits.startsWith("00")) return digits.drop(2)
