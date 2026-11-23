@@ -31,6 +31,7 @@ class MainActivity : Activity() {
 
     private lateinit var rPerm: SRow
     private lateinit var rBat: SRow
+    private var rHib: SRow? = null
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy.html"
 
@@ -151,6 +152,7 @@ class MainActivity : Activity() {
         st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
         rPerm = statusRow(st, "منح") { requestPermissions(needed(), 1) }
         rBat = statusRow(st, "سماح") { batterySettings() }
+        if (Build.VERSION.SDK_INT >= 30) rHib = statusRow(st, "إيقاف") { hibernationSettings() }
         col.addView(st, T.gap(this, 14))
         col.addView(T.button(this, "💰 مصاريفي", true) { startActivity(Intent(this, BudgetActivity::class.java)) }, T.gap(this, 12))
 
@@ -392,6 +394,22 @@ class MainActivity : Activity() {
         val pm = getSystemService(PowerManager::class.java)
         val free = pm != null && pm.isIgnoringBatteryOptimizations(packageName)
         setRow(rBat, free, "الخلفية مسموحة", "البطارية قد توقف التطبيق")
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            val safe = try { packageManager.isAutoRevokeWhitelisted } catch (e: Exception) { true }
+            rHib?.let { setRow(it, safe, "لن يُوقف عند قلة الاستخدام", "الهاتف قد يوقفه إذا لم تفتحه") }
+        }
+    }
+
+    // أندرويد 11+: «إزالة الأذونات وتحرير مساحة» يوقف التطبيق ويسحب صلاحياته إذا لم يُفتح لفترة
+    private fun hibernationSettings() {
+        try {
+            startActivity(
+                Intent(Intent.ACTION_AUTO_REVOKE_PERMISSIONS, Uri.parse("package:$packageName"))
+            )
+        } catch (e: Exception) {
+            openAppInfo()
+        }
     }
 
     private fun openAppInfo() {

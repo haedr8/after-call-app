@@ -70,6 +70,7 @@ class CallLogJobService : JobService() {
                     )
                     .setTriggerContentUpdateDelay(300)
                     .setTriggerContentMaxDelay(1500)
+                    .setPersisted(true)
                     .build()
                 val r = js.schedule(job)
                 if (r != JobScheduler.RESULT_SUCCESS) Diag.log(ctx, "schedule failed")
