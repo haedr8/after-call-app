@@ -157,6 +157,11 @@ object Store {
         return sb.toString()
     }
 
+    fun cleanPhone(s: String): String {
+        val a = ascii(s.trim())
+        return a.filter { it in '0'..'9' || it == '+' || it == '*' || it == '#' }
+    }
+
     fun waNumber(c: Context, number: String): String {
         val raw = ascii(number.replace("(0)", "").trim())
         val digits = raw.filter { it in '0'..'9' }

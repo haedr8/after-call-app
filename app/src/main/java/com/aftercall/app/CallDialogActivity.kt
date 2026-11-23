@@ -35,7 +35,7 @@ class CallDialogActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        number = intent.getStringExtra("number") ?: ""
+        number = Store.cleanPhone(intent.getStringExtra("number") ?: "")
         name = intent.getStringExtra("name") ?: ""
         build()
     }
@@ -348,18 +348,37 @@ class CallDialogActivity : Activity() {
         val tail = n.takeLast(9)
         var uri: Uri? = null
         if (Phone.granted(this, Manifest.permission.READ_CONTACTS)) {
+            val DC = android.provider.ContactsContract.Data.CONTENT_URI
+            // 1) البحث عبر جهة الاتصال نفسها (مطابقة النظام للرقم، لا تتأثر بصيغة الرقم)
             try {
+                var cid = -1L
                 contentResolver.query(
-                    android.provider.ContactsContract.Data.CONTENT_URI,
+                    Uri.withAppendedPath(android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number)),
+                    arrayOf(android.provider.ContactsContract.PhoneLookup._ID), null, null, null
+                )?.use { c -> if (c.moveToFirst()) cid = c.getLong(0) }
+                if (cid >= 0) {
+                    contentResolver.query(
+                        DC, arrayOf(android.provider.ContactsContract.Data._ID),
+                        android.provider.ContactsContract.Data.MIMETYPE + "=? AND " +
+                            android.provider.ContactsContract.Data.CONTACT_ID + "=?",
+                        arrayOf(mime, cid.toString()), null
+                    )?.use { c ->
+                        if (c.moveToFirst()) uri = android.content.ContentUris.withAppendedId(DC, c.getLong(0))
+                    }
+                }
+            } catch (e: Exception) {
+            }
+            // 2) مطابقة آخر 9 أرقام
+            if (uri == null) try {
+                contentResolver.query(
+                    DC,
                     arrayOf(android.provider.ContactsContract.Data._ID, android.provider.ContactsContract.Data.DATA1),
                     android.provider.ContactsContract.Data.MIMETYPE + "=?", arrayOf(mime), null
                 )?.use { c ->
                     while (c.moveToNext()) {
                         val d = Store.ascii((c.getString(1) ?: "").substringBefore("@")).filter { it in '0'..'9' }
                         if (tail.length >= 7 && d.endsWith(tail)) {
-                            uri = android.content.ContentUris.withAppendedId(
-                                android.provider.ContactsContract.Data.CONTENT_URI, c.getLong(0)
-                            )
+                            uri = android.content.ContentUris.withAppendedId(DC, c.getLong(0))
                             break
                         }
                     }
