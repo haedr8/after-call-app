@@ -409,7 +409,6 @@ class CallDialogActivity : Activity() {
                     finish()
                     return
                 } catch (e: Exception) {
-                    waStarted = false
                     diag += " | فشل فتح واتساب: " + (e.javaClass.simpleName)
                 }
             }
