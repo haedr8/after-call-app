@@ -341,6 +341,23 @@ class CallDialogActivity : Activity() {
         go(Store.waPackage(this))
     }
 
+    private var waStarted = false
+    private var waPkg: String? = null
+
+    override fun onResume() {
+        super.onResume()
+        // رجعنا من واتساب: إذا ما بدأ الاتصال نعرض خيارات بدل ترك المستخدم بلا نتيجة
+        if (waStarted) {
+            waStarted = false
+            AlertDialog.Builder(this)
+                .setTitle("اتصال واتساب")
+                .setMessage("إذا ما بدأ الاتصال، افتح المحادثة واضغط أيقونة الاتصال بنفسك.")
+                .setPositiveButton("فتح المحادثة") { _, _ -> launchWa("", waPkg) }
+                .setNegativeButton("إغلاق") { _, _ -> finish() }
+                .show()
+        }
+    }
+
     private fun waCall() {
         withWa { pkg -> doWaCall(pkg) }
     }
@@ -405,10 +422,13 @@ class CallDialogActivity : Activity() {
             for (i in tries) {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 try {
+                    Toast.makeText(this, "جاري فتح اتصال واتساب…", Toast.LENGTH_SHORT).show()
+                    waPkg = pkg
+                    waStarted = true
                     startActivity(i)
-                    finish()
                     return
                 } catch (e: Exception) {
+                    waStarted = false
                     diag += " | فشل فتح واتساب: " + (e.javaClass.simpleName)
                 }
             }
