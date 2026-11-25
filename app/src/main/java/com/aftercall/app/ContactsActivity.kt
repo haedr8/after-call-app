@@ -28,6 +28,8 @@ class ContactsActivity : Activity() {
     private var shown: List<C> = emptyList()
     private lateinit var list: ListView
     private lateinit var info: TextView
+    private lateinit var grantBtn: View
+    private var asked = false
 
     private fun dp(v: Int) = T.dp(this, v)
 
@@ -94,6 +96,12 @@ class ContactsActivity : Activity() {
         info.gravity = Gravity.CENTER
         root.addView(info, T.gap(this, 8))
 
+        grantBtn = T.tonal(this, "السماح بقراءة جهات الاتصال") {
+            Grant.request(this, arrayOf(Manifest.permission.READ_CONTACTS), 51)
+        }
+        grantBtn.visibility = View.GONE
+        root.addView(grantBtn, T.gap(this, 8))
+
         list = ListView(this)
         list.adapter = adapter
         list.setOnItemClickListener { _, _, i, _ ->
@@ -117,9 +125,16 @@ class ContactsActivity : Activity() {
     private fun load() {
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             info.text = "اسمح بقراءة جهات الاتصال لعرضها هنا"
-            requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), 51)
+            grantBtn.visibility = View.VISIBLE
+            // نطلب الإذن مرة واحدة فقط تلقائياً، وبعدها بزر يضغطه المستخدم (لا نعيد النافذة بحلقة)
+            if (!asked) {
+                asked = true
+                requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), 51)
+            }
             return
         }
+        grantBtn.visibility = View.GONE
+        info.text = ""
         all.clear()
         try {
             contentResolver.query(
@@ -213,7 +228,14 @@ class ContactsActivity : Activity() {
 
     override fun onRequestPermissionsResult(rc: Int, p: Array<out String>, g: IntArray) {
         super.onRequestPermissionsResult(rc, p, g)
-        if (rc == 51) load()
+        if (rc == 51) {
+            if (checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) load()
+            else {
+                info.text = "اسمح بقراءة جهات الاتصال لعرضها هنا"
+                grantBtn.visibility = View.VISIBLE
+                Grant.afterResult(this, arrayOf(Manifest.permission.READ_CONTACTS))
+            }
+        }
         if (rc == 52) {
             val d = pendingDelete
             pendingDelete = null
