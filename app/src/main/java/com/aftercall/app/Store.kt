@@ -111,6 +111,7 @@ object Store {
         val url = "https://wa.me/" + waNumber(c, number) +
             (if (text.isBlank()) "" else "?text=" + Uri.encode(text))
         val i = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (pkg != null) i.setPackage(pkg)
         return i
     }
