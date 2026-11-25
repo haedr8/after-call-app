@@ -341,23 +341,6 @@ class CallDialogActivity : Activity() {
         go(Store.waPackage(this))
     }
 
-    private var waStarted = false
-    private var waPkg: String? = null
-
-    override fun onResume() {
-        super.onResume()
-        // رجعنا من واتساب: إذا ما بدأ الاتصال نعرض خيارات بدل ترك المستخدم بلا نتيجة
-        if (waStarted) {
-            waStarted = false
-            AlertDialog.Builder(this)
-                .setTitle("اتصال واتساب")
-                .setMessage("إذا ما بدأ الاتصال، افتح المحادثة واضغط أيقونة الاتصال بنفسك.")
-                .setPositiveButton("فتح المحادثة") { _, _ -> launchWa("", waPkg) }
-                .setNegativeButton("إغلاق") { _, _ -> finish() }
-                .show()
-        }
-    }
-
     private fun waCall() {
         withWa { pkg -> doWaCall(pkg) }
     }
@@ -422,10 +405,8 @@ class CallDialogActivity : Activity() {
             for (i in tries) {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 try {
-                    Toast.makeText(this, "جاري فتح اتصال واتساب…", Toast.LENGTH_SHORT).show()
-                    waPkg = pkg
-                    waStarted = true
                     startActivity(i)
+                    finish()
                     return
                 } catch (e: Exception) {
                     waStarted = false
@@ -433,19 +414,8 @@ class CallDialogActivity : Activity() {
                 }
             }
         }
-        // لا يوجد خيار اتصال واتساب لهذا الرقم: نوضح بنافذة بدل الصمت
-        AlertDialog.Builder(this)
-            .setTitle("اتصال واتساب")
-            .setMessage(
-                "ما قدرت أبدأ اتصال واتساب مباشر لهذا الرقم.\n\n" +
-                    "• «فتح المحادثة»: تفتح المحادثة وتضغط أيقونة الاتصال بنفسك.\n" +
-                    "• إذا الرقم محفوظ ولا يزال يظهر هذا، افتح واتساب ← الإعدادات ← تأكد من مزامنة جهات الاتصال، وشغّل واتساب بالخلفية.\n\n" +
-                    "تشخيص: " + diag
-            )
-            .setPositiveButton("فتح المحادثة") { _, _ -> launchWa("", pkg) }
-            .setNeutralButton("حفظ الرقم") { _, _ -> saveContact() }
-            .setNegativeButton("إلغاء", null)
-            .show()
+        // الرقم غير مزامَن مع واتساب: نفتح المحادثة مباشرة لتضغط أيقونة الاتصال
+        launchWa("", pkg)
     }
 
     private fun openWhatsApp(text: String) {
