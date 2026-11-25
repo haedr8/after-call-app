@@ -402,11 +402,18 @@ class CallDialogActivity : Activity() {
             } catch (e: Exception) {
             }
         }
-        Toast.makeText(
-            this, "الرقم غير محفوظ بجهات الاتصال، فتحت المحادثة: اضغط أيقونة الاتصال بواتساب",
-            Toast.LENGTH_LONG
-        ).show()
-        launchWa("", pkg)
+        // لا يوجد خيار اتصال واتساب لهذا الرقم (غير محفوظ أو واتساب لم يزامنه): نوضح بنافذة بدل الصمت
+        AlertDialog.Builder(this)
+            .setTitle("اتصال واتساب")
+            .setMessage(
+                "واتساب يسمح بالاتصال المباشر فقط للأرقام المحفوظة بجهات الاتصال والمزامَنة معه.\n\n" +
+                    "• «فتح المحادثة»: تفتح المحادثة وتضغط أيقونة الاتصال بنفسك.\n" +
+                    "• «حفظ الرقم»: احفظه بجهات الاتصال، وبعد دقيقة يظهر الاتصال المباشر."
+            )
+            .setPositiveButton("فتح المحادثة") { _, _ -> launchWa("", pkg) }
+            .setNeutralButton("حفظ الرقم") { _, _ -> saveContact() }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
     private fun openWhatsApp(text: String) {
