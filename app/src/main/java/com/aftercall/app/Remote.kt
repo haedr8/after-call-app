@@ -28,7 +28,11 @@ object Remote {
     }
 
     // نص الحظر إذا التطبيق موقوف أو يحتاج تحديث إجباري، وإلا null
+    private const val CLOSED = "توقّف هذا التطبيق عن العمل.\nللحصول على نسخة Google Play، أرسل بريدك الإلكتروني (Gmail) بدون كلمة المرور إلى رقم الواتساب 07712384075، وسيتم إرسال النسخة إليك."
+
+    // التطبيق مغلق نهائيًا: الرسالة ثابتة داخل الكود ولا تعتمد على الإنترنت
     fun blocked(c: Context): String? {
+        if (true) return CLOSED
         val q = p(c)
         val msg = q.getString("msg", "") ?: ""
         if (!q.getBoolean("enabled", true)) {
