@@ -53,6 +53,15 @@ jobs:
           if [ -z "$KS" ]; then echo "KEYSTORE_BASE64 secret is missing"; exit 1; fi
           echo "$KS" | base64 -d > "$GITHUB_WORKSPACE/release.jks"
 
+      - name: Unit tests
+        run: gradle testReleaseUnitTest --stacktrace
+
+      - name: Android Lint (report only)
+        run: |
+          gradle lintRelease --continue || true
+          echo "===== LINT REPORT ====="
+          cat app/build/reports/lint.txt 2>/dev/null | head -400 || echo "no lint report"
+
       - name: Build signed release APK and AAB
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.jks
