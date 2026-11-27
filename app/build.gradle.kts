@@ -68,4 +68,8 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.1")
     // قراءة النص على الجهاز نفسه (النموذج مضمّن، لا يحتاج إنترنت)
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    // قراءة الأرقام العربية (٠١٢٣…) على الجهاز، والنموذج يُنزَّل وقت البناء داخل assets
+    implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    // التحقق من صحة الأرقام الدولية
+    implementation("io.michaelrocks:libphonenumber-android:8.13.50")
 }

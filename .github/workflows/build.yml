@@ -35,6 +35,17 @@ jobs:
           N=$(gh release list --limit 300 | wc -l)
           echo "name=$((N+1))" >> "$GITHUB_OUTPUT"
 
+      - name: Download Arabic OCR model (bundled into the app, runs offline)
+        run: |
+          mkdir -p app/src/main/assets/tessdata
+          for i in 1 2 3; do
+            curl -fL --retry 3 -o app/src/main/assets/tessdata/ara.traineddata \
+              https://github.com/tesseract-ocr/tessdata_fast/raw/main/ara.traineddata && break
+            echo "retry $i"; sleep 5
+          done
+          ls -l app/src/main/assets/tessdata/
+          test -s app/src/main/assets/tessdata/ara.traineddata
+
       - name: Decode signing key
         env:
           KS: ${{ secrets.KEYSTORE_BASE64 }}
