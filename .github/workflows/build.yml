@@ -51,6 +51,12 @@ jobs:
           VERSION_NAME: ${{ steps.ver.outputs.name }}
         run: gradle assembleRelease bundleRelease --stacktrace
 
+      - name: Verify no INTERNET permission in merged manifest
+        run: |
+          M=$(find app/build/intermediates -path '*merged_manifest*' -path '*elease*' -name AndroidManifest.xml | head -1)
+          echo "manifest: $M"
+          if [ -n "$M" ] && grep -q "android.permission.INTERNET" "$M"; then echo "INTERNET permission leaked into manifest"; exit 1; fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: haulni-apk
