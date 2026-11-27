@@ -27,11 +27,8 @@ import android.widget.Toast
 
 class MainActivity : Activity() {
 
-    private class SRow(val label: TextView, val fix: Button)
-
-    private lateinit var rPerm: SRow
-    private lateinit var rDef: SRow
-    private lateinit var rFs: SRow
+    private lateinit var statusPill: TextView
+    private lateinit var setupBanner: LinearLayout
 
     private val privacyUrl = "https://haedr8.github.io/after-call-app/privacy-play.html"
 
@@ -50,21 +47,24 @@ class MainActivity : Activity() {
 
     private fun needed(): Array<String> = Phone.perms
 
-    private fun statusRow(parent: LinearLayout, fixText: String, onFix: () -> Unit): SRow {
-        val row = LinearLayout(this)
-        row.orientation = LinearLayout.HORIZONTAL
-        row.gravity = Gravity.CENTER_VERTICAL
-        row.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        val tv = T.label(this, "", 15f, T.INK, true)
-        val b = T.button(this, fixText, false, onFix)
-        b.textSize = 13f
-        b.minHeight = 0
-        b.minimumHeight = 0
-        b.setPadding(dp(14), dp(6), dp(14), dp(6))
-        row.addView(tv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(b, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)))
-        parent.addView(row, T.gap(this, 10))
-        return SRow(tv, b)
+    private fun listRow(parent: LinearLayout, emoji: String, text: String, last: Boolean, onClick: () -> Unit) {
+        val r = LinearLayout(this)
+        r.orientation = LinearLayout.HORIZONTAL
+        r.gravity = Gravity.CENTER_VERTICAL
+        r.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        r.setPadding(0, dp(13), 0, dp(13))
+        r.isClickable = true
+        r.addView(T.label(this, emoji, 20f, T.INK))
+        val t = T.label(this, text, 15f, T.INK, true)
+        t.setPadding(dp(12), 0, 0, 0)
+        r.addView(t, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        r.setOnClickListener { onClick() }
+        parent.addView(r)
+        if (!last) {
+            val d = View(this)
+            d.setBackgroundColor(T.LINE)
+            parent.addView(d, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)))
+        }
     }
 
     private fun tileRow(a: View, b: View): LinearLayout {
@@ -89,129 +89,117 @@ class MainActivity : Activity() {
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
         col.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        col.setPadding(dp(16), dp(16), dp(16), dp(16))
+        col.setPadding(dp(16), dp(16), dp(16), dp(24))
         Ui.fit(col, dp(16), dp(16))
 
-        // ---- البطاقة العلوية ----
+        // ---- الرأس: الشعار + الاسم + حالة التطبيق ----
         val header = LinearLayout(this)
         header.orientation = LinearLayout.HORIZONTAL
         header.gravity = Gravity.CENTER_VERTICAL
         header.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        val hbg = GradientDrawable()
-        hbg.colors = intArrayOf(T.TEAL, T.GREEN)
-        hbg.orientation = GradientDrawable.Orientation.TL_BR
-        hbg.cornerRadius = dp(28).toFloat()
-        header.background = hbg
-        header.setPadding(dp(18), dp(18), dp(18), dp(18))
-
         val logoBox = FrameLayout(this)
-        logoBox.background = T.shape(this, 0x33FFFFFF, 20)
+        logoBox.background = T.shape(this, T.TEAL, 14)
         logoBox.clipToOutline = true
         val img = ImageView(this)
         img.setImageResource(R.mipmap.ic_fg)
         img.scaleType = ImageView.ScaleType.CENTER_CROP
-        logoBox.addView(img, FrameLayout.LayoutParams(dp(76), dp(76)))
-        header.addView(logoBox, LinearLayout.LayoutParams(dp(76), dp(76)))
-
+        logoBox.addView(img, FrameLayout.LayoutParams(dp(48), dp(48)))
+        header.addView(logoBox, LinearLayout.LayoutParams(dp(48), dp(48)))
         val ht = LinearLayout(this)
         ht.orientation = LinearLayout.VERTICAL
-        ht.setPadding(dp(14), 0, dp(14), 0)
-        ht.addView(T.label(this, "حولني", 26f, T.WHITE, true))
-        ht.addView(T.label(this, "خيارات سريعة بعد كل مكالمة", 13f, 0xE6FFFFFF.toInt()))
-        val ver = T.label(this, "الإصدار " + versionLabel(), 12f, T.WHITE)
-        ver.background = T.shape(this, 0x33FFFFFF, 12)
-        ver.setPadding(dp(10), dp(3), dp(10), dp(3))
-        val vp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        vp.topMargin = dp(8)
-        ht.addView(ver, vp)
+        ht.setPadding(dp(12), 0, dp(12), 0)
+        ht.addView(T.label(this, "حولني", 22f, T.INK, true))
+        ht.addView(T.label(this, "الإصدار " + versionLabel(), 12f, T.MUTED))
         header.addView(ht, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        col.addView(header, T.gap(this, 0))
+        statusPill = T.label(this, "", 12f, T.OK, true)
+        statusPill.setPadding(dp(12), dp(6), dp(12), dp(6))
+        header.addView(statusPill)
+        col.addView(header)
 
-        // ---- حالة التطبيق ----
-        val st = T.card(this)
-        st.addView(T.label(this, "حالة التطبيق", 16f, T.INK, true))
-        rDef = statusRow(st, "تفعيل") { disclosure() }
-        rPerm = statusRow(st, "منح") { Grant.request(this, needed()) }
-        rFs = statusRow(st, "سماح") { Grant.fullScreen(this) }
-        col.addView(st, T.gap(this, 14))
-        col.addView(T.button(this, "📷 مسح رقم من ورقة", true) { startActivity(Intent(this, ScanActivity::class.java)) }, T.gap(this, 12))
-        col.addView(T.button(this, "💰 مصاريفي", true) { startActivity(Intent(this, BudgetActivity::class.java)) }, T.gap(this, 8))
+        // ---- شريط إكمال الإعداد (يظهر فقط عند وجود نقص) ----
+        setupBanner = T.card(this)
+        setupBanner.addView(T.label(this, "⚠️ يلزم إكمال الإعداد ليعمل التطبيق", 15f, T.WARN, true))
+        setupBanner.addView(
+            T.button(this, "فتح مركز الإعداد", true) { startActivity(Intent(this, SetupActivity::class.java)) },
+            T.gap(this, 10)
+        )
+        col.addView(setupBanner, T.gap(this, 14))
 
-        // ---- الأدوات ----
-        col.addView(T.label(this, "الأدوات", 14f, T.MUTED, true), T.gap(this, 18))
+        // ---- بطاقة المسح الكبيرة ----
+        val hero = LinearLayout(this)
+        hero.orientation = LinearLayout.VERTICAL
+        hero.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val hbg = GradientDrawable()
+        hbg.colors = intArrayOf(T.TEAL, T.GREEN)
+        hbg.orientation = GradientDrawable.Orientation.TL_BR
+        hbg.cornerRadius = dp(28).toFloat()
+        hero.background = hbg
+        hero.setPadding(dp(22), dp(24), dp(22), dp(22))
+        hero.addView(T.label(this, "📷", 40f, T.WHITE))
+        hero.addView(T.label(this, "امسح رقم من ورقة", 24f, T.WHITE, true), T.gap(this, 6))
+        hero.addView(
+            T.label(this, "وجّه الكاميرا على الأوردر، ويظهر لك الاتصال والواتساب مباشرة. يقرأ الأرقام العربية والإنجليزية.", 14f, 0xEBFFFFFF.toInt()),
+            T.gap(this, 6)
+        )
+        val go = T.button(this, "ابدأ المسح", false) { startActivity(Intent(this, ScanActivity::class.java)) }
+        hero.addView(go, T.gap(this, 14))
+        col.addView(hero, T.gap(this, 14))
+
+        // ---- مربعات سريعة ----
         col.addView(
             tileRow(
-                T.tile(this, "📞", "لوحة الأرقام") {
-                    startActivity(Intent(this, DialerActivity::class.java))
-                },
-                T.tile(this, "🕘", "سجل المكالمات") {
-                    startActivity(Intent(this, LogActivity::class.java))
-                }
+                T.tile(this, "🕘", "سجل المكالمات") { startActivity(Intent(this, LogActivity::class.java)) },
+                T.tile(this, "📞", "لوحة الأرقام") { startActivity(Intent(this, DialerActivity::class.java)) }
             ),
-            T.gap(this, 8)
+            T.gap(this, 12)
         )
         col.addView(
             tileRow(
-                T.tile(this, "⚙️", "الإعدادات") {
-                    startActivity(Intent(this, SettingsActivity::class.java))
-                },
-                T.tile(this, "👤", "جهات الاتصال") {
-                    startActivity(Intent(this, ContactsActivity::class.java))
-                }
-            ),
-            T.gap(this, 8)
-        )
-        col.addView(
-            tileRow(
-                T.tile(this, "🧭", "دليل الإعداد") { Wizard.start(this) },
-                T.tile(this, "ℹ️", "كيف يعمل التطبيق") { showHow() }
+                T.tile(this, "👤", "جهات الاتصال") { startActivity(Intent(this, ContactsActivity::class.java)) },
+                T.tile(this, "💰", "مصاريفي") { startActivity(Intent(this, BudgetActivity::class.java)) }
             ),
             T.gap(this, 10)
         )
-        col.addView(
-            tileRow(
-                T.tile(this, "🛠", "تشخيص المشاكل") { showDiag() },
-                T.tile(this, "🔒", "سياسة الخصوصية") { openUrl(privacyUrl) }
-            ),
-            T.gap(this, 10)
-        )
-        col.addView(T.button(this, "🔋 نصائح التشغيل بالخلفية لهاتفك", false) { showOemHelp() }, T.gap(this, 10))
 
-        // ---- الدعم ----
+        // ---- قائمة ----
+        val list = T.card(this)
+        list.setPadding(dp(16), dp(4), dp(16), dp(4))
+        listRow(list, "⚙️", "الإعدادات", false) { startActivity(Intent(this, SettingsActivity::class.java)) }
+        listRow(list, "🧭", "مركز الإعداد والأذونات", false) { startActivity(Intent(this, SetupActivity::class.java)) }
+        listRow(list, "ℹ️", "كيف يعمل التطبيق", false) { showHow() }
+        listRow(list, "🔋", "نصائح التشغيل بالخلفية لهاتفك", false) { showOemHelp() }
+        listRow(list, "🛠", "تشخيص المشاكل", false) { showDiag() }
+        listRow(list, "🔒", "سياسة الخصوصية", true) { openUrl(privacyUrl) }
+        col.addView(list, T.gap(this, 12))
 
-        // ---- التذييل ----
-        val credit = T.label(this, "تصميم وتطوير: حيدر محمد", 14f, T.MUTED)
-        credit.gravity = Gravity.CENTER
-        col.addView(credit, T.gap(this, 22))
-
+        // ---- تواصل مع المطوّر ----
+        val dev = T.card(this)
+        dev.addView(T.label(this, "تواصل مع المطوّر", 16f, T.INK, true))
+        dev.addView(T.label(this, "تصميم وتطوير: حيدر محمد", 13f, T.MUTED), T.gap(this, 2))
         val social = LinearLayout(this)
         social.orientation = LinearLayout.HORIZONTAL
         social.gravity = Gravity.CENTER
         social.layoutDirection = View.LAYOUT_DIRECTION_LTR
         val c1 = T.chip(this, tiktokUser, R.drawable.ic_tiktok) { openTikTok() }
         val c2 = T.chip(this, instagramUser, R.drawable.ic_instagram) { openInstagram() }
-        val sp1 = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        val sp1 = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         sp1.setMargins(dp(6), 0, dp(6), 0)
-        val sp2 = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        val sp2 = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         sp2.setMargins(dp(6), 0, dp(6), 0)
         social.addView(c1, sp1)
         social.addView(c2, sp2)
-        col.addView(social, T.gap(this, 10))
+        dev.addView(social, T.gap(this, 12))
+        col.addView(dev, T.gap(this, 12))
 
         scroll.addView(
             col,
-            ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         )
         setContentView(scroll)
-        if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this) else showWelcomeOnce()
+        if (!Store.getBool(this, "wizard_done", false)) {
+            Store.setBool(this, "wizard_done", true)
+            startActivity(Intent(this, SetupActivity::class.java))
+        } else showWelcomeOnce()
     }
 
     private fun disclosure() {
@@ -341,20 +329,15 @@ class MainActivity : Activity() {
         refresh()
     }
 
-    private fun setRow(r: SRow, ok: Boolean, okText: String, badText: String) {
-        r.label.text = if (ok) "✅ " + okText else "⚠️ " + badText
-        r.label.setTextColor(if (ok) T.OK else T.WARN)
-        r.fix.visibility = if (ok) View.GONE else View.VISIBLE
-    }
-
     private fun refresh() {
-        setRow(rDef, Phone.isDefault(this), "حولني هو تطبيق الهاتف", "حولني ليس تطبيق الهاتف الافتراضي")
         val fsOk = Build.VERSION.SDK_INT < 34 ||
             (getSystemService(android.app.NotificationManager::class.java)?.canUseFullScreenIntent() ?: true)
-        setRow(rFs, fsOk, "شاشة المكالمة الواردة مسموحة", "اسمح بعرض المكالمة الواردة فوق الشاشة")
-        val ok = needed().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-        setRow(rPerm, ok, "الصلاحيات ممنوحة", "الصلاحيات ناقصة")
-
+        val ok = Phone.isDefault(this) && fsOk &&
+            needed().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
+        statusPill.text = if (ok) "✅ كل شيء يعمل" else "⚠️ يحتاج إعداد"
+        statusPill.setTextColor(if (ok) T.OK else T.WARN)
+        statusPill.background = T.shape(this, if (ok) 0xFFE3F5EA.toInt() else 0xFFFEF3C7.toInt(), 18)
+        setupBanner.visibility = if (ok) View.GONE else View.VISIBLE
     }
 
     private fun openAppInfo() {
