@@ -211,7 +211,7 @@ class MainActivity : Activity() {
             )
         )
         setContentView(scroll)
-        if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this)
+        if (!Store.getBool(this, "wizard_done", false)) Wizard.start(this) else showWelcomeOnce()
     }
 
     private fun disclosure() {
@@ -311,6 +311,29 @@ class MainActivity : Activity() {
                 Toast.makeText(this, "واتساب غير موجود، استخدم زر النسخ", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    // رسالة تظهر مرة واحدة عند أول فتح، ومرة عند كل تحديث جديد
+    private fun showWelcomeOnce() {
+        val ver = try {
+            packageManager.getPackageInfo(packageName, 0).longVersionCode
+        } catch (e: Exception) {
+            0L
+        }
+        val sp = getSharedPreferences("welcome", MODE_PRIVATE)
+        if (sp.getLong("shown_ver", -1L) == ver) return
+        sp.edit().putLong("shown_ver", ver).apply()
+        val tv = TextView(this)
+        tv.text = "هذا التطبيق صدقة جارية، مجاني بالكامل 🌹\n\nإذا نفعك، ادعُ لي ولوالديّ بالخير 🤲"
+        tv.textSize = 17f
+        tv.setTextColor(0xFF000000.toInt())
+        tv.gravity = Gravity.CENTER
+        tv.setPadding(dp(20), dp(16), dp(20), dp(8))
+        tv.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        AlertDialog.Builder(this)
+            .setView(tv)
+            .setPositiveButton("آمين 🤍", null)
+            .show()
     }
 
     override fun onResume() {
