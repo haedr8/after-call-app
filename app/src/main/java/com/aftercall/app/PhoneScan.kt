@@ -1,7 +1,7 @@
 package com.aftercall.app
 
 import android.content.Context
-import com.google.i18n.phonenumbers.PhoneNumberUtil
+import io.michaelrocks.libphonenumber.android.PhoneNumberUtil
 
 // استخراج أرقام الهواتف من نص مقروء بالكاميرا:
 // - موبايل عراقي بأي صيغة (07XXXXXXXXX، 7XXXXXXXXX، +964…، 00964…، أرقام عربية)
