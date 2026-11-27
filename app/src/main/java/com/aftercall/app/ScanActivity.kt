@@ -163,38 +163,24 @@ class ScanActivity : ComponentActivity() {
         )
     }
 
+    // رقم واحد: نفتح نافذة الخيارات مباشرة (نفس نافذة بقية التطبيق).
+    // عدة أرقام: نعرضها للاختيار، والضغط على أي رقم يفتح نافذة الخيارات.
     private fun renderResult() {
-        panel.removeAllViews()
         val list = hits.entries.sortedByDescending { it.value }.map { it.key }
-        if (selected == null || selected !in list) selected = list.firstOrNull()
-        hint.text = if (list.size > 1) "تم العثور على ${list.size} أرقام، اختر الرقم" else "تم العثور على الرقم"
-        for (n in list) {
-            val tv = TextView(this)
-            tv.text = n
-            tv.textDirection = View.TEXT_DIRECTION_LTR
-            tv.textSize = if (n == selected) 26f else 18f
-            tv.gravity = Gravity.CENTER
-            tv.setTextColor(if (n == selected) 0xFFFFFFFF.toInt() else 0xFFB8C7CA.toInt())
-            tv.setTypeface(tv.typeface, if (n == selected) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
-            tv.setPadding(dp(8), dp(8), dp(8), dp(8))
-            tv.setOnClickListener {
-                selected = n
-                renderResult()
-            }
-            panel.addView(tv, LinearLayout.LayoutParams(-1, -2))
+        if (list.size == 1) {
+            options(list[0])
+            return
         }
-        panel.addView(
-            row(
-                T.button(this, "📞 اتصال", true) { act { n -> if (Phone.place(this, n)) finish() } },
-                T.button(this, "📲 واتساب", true) { act { n -> openWa(n) } }
-            )
-        )
-        panel.addView(
-            row(
-                T.button(this, "📋 نسخ", false) { act { n -> copy(n) } },
-                T.button(this, "⋯ خيارات", false) { act { n -> options(n) } }
-            )
-        )
+        panel.removeAllViews()
+        hint.text = "تم العثور على ${list.size} أرقام، اختر الرقم"
+        for (n in list) {
+            val b = T.button(this, "📞  $n", true) { options(n) }
+            b.textDirection = View.TEXT_DIRECTION_LTR
+            b.textSize = 18f
+            val lp = LinearLayout.LayoutParams(-1, -2)
+            lp.setMargins(0, dp(6), 0, 0)
+            panel.addView(b, lp)
+        }
         panel.addView(
             row(
                 T.button(this, "🔄 مسح جديد", false) { rescan() },
