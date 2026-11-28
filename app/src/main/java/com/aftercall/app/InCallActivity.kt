@@ -104,7 +104,7 @@ class InCallActivity : Activity() {
             }
             if (t > 0) {
                 val s = ((System.currentTimeMillis() - t) / 1000).coerceAtLeast(0)
-                String.format("%02d:%02d", s / 60, s % 60)
+                String.format(java.util.Locale.US, "%02d:%02d", s / 60, s % 60)
             } else "متصل"
         }
         else -> ""

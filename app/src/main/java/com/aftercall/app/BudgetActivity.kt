@@ -449,13 +449,14 @@ class BudgetActivity : Activity() {
         rg.layoutDirection = View.LAYOUT_DIRECTION_RTL
         val r1 = android.widget.RadioButton(this)
         r1.text = "اقترضت من شخص (أنا مداين)"
-        r1.id = 1001
+        val id1 = View.generateViewId()
+        r1.id = id1
         val r2 = android.widget.RadioButton(this)
         r2.text = "أقرضت شخص (مداينه)"
-        r2.id = 1002
+        r2.id = View.generateViewId()
         rg.addView(r1)
         rg.addView(r2)
-        rg.check(1001)
+        rg.check(id1)
         val who = input("اسم الشخص", false)
         val amt = input("المبلغ", true)
         val note = input("ملاحظة (اختياري)", false)

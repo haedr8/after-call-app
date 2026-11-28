@@ -11,6 +11,7 @@
         android:required="false" />
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- التطبيق لا يرسل أي بيانات: نمنع دمج صلاحية الإنترنت القادمة من المكتبات -->
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />

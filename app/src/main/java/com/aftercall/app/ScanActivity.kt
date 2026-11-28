@@ -342,6 +342,14 @@ class ScanActivity : ComponentActivity() {
 
     // يشغّل المحركين على الصورة؛ throttle=true أثناء البث المباشر
     private fun process(bmp: Bitmap, throttle: Boolean) {
+        try {
+            processUnsafe(bmp, throttle)
+        } catch (e: Throwable) {
+            // الشاشة أُغلقت أثناء التحليل: نتجاهل
+        }
+    }
+
+    private fun processUnsafe(bmp: Bitmap, throttle: Boolean) {
         mlk.process(InputImage.fromBitmap(bmp, 0))
             .addOnSuccessListener { t -> onNumbers(PhoneScan.findAll(this, t.text)) }
         val ar = arabic ?: return
@@ -410,7 +418,11 @@ class ScanActivity : ComponentActivity() {
         if (requestCode == 71 && uri != null) {
             hint.text = "جارٍ قراءة الصورة…"
             done = true // نوقف البث أثناء قراءة الصورة
-            tessExec.execute { readPicked(uri) }
+            try {
+                tessExec.execute { readPicked(uri) }
+            } catch (e: Exception) {
+                done = false
+            }
         }
     }
 

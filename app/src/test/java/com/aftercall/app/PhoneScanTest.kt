@@ -18,7 +18,7 @@ class PhoneScanTest {
     @Test fun arabicNoZeroNoSpaces() = assertEquals(listOf("07712384075"), f("٧٧١٢٣٨٤٠٧٥"))
     @Test fun arabicWithSpaces() = assertEquals(listOf("07712384075"), f("٠٧٧١ ٢٣٨ ٤٠٧٥"))
     @Test fun ocrLetterOForZero() = assertEquals(listOf("07712384075"), f("O771 238 4075"))
-    @Test fun ocrLetterLForOne() = assertEquals(listOf("07712384075"), f("0771 238 4O75").let { listOf("07712384075") })
+    @Test fun ocrLetterOInsideNumber() = assertEquals(listOf("07712384075"), f("0771 238 4O75"))
     @Test fun multipleNumbersKeepOrder() =
         assertEquals(listOf("07701112222", "07503334444"), f("الزبون 0770 111 2222\nالبديل 0750 333 4444"))
     @Test fun duplicatesRemoved() = assertEquals(listOf("07701112222"), f("0770 111 2222 و 0770 111 2222"))

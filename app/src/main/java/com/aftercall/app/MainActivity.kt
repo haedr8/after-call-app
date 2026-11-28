@@ -304,7 +304,7 @@ class MainActivity : Activity() {
     // رسالة تظهر مرة واحدة عند أول فتح، ومرة عند كل تحديث جديد
     private fun showWelcomeOnce() {
         val ver = try {
-            packageManager.getPackageInfo(packageName, 0).longVersionCode
+            androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0))
         } catch (e: Exception) {
             0L
         }

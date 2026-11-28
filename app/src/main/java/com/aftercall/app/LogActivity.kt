@@ -92,7 +92,7 @@ class LogActivity : Activity() {
         box.addView(l1)
         val sub = (if (name.isNotBlank()) number + "  •  " else "") +
             DateUtils.getRelativeTimeSpanString(date, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS) +
-            (if (dur > 0) "  •  " + dur / 60 + ":" + String.format("%02d", dur % 60) else "")
+            (if (dur > 0) "  •  " + dur / 60 + ":" + String.format(java.util.Locale.US, "%02d", dur % 60) else "")
         val l2 = T.label(this, sub, 13f, T.MUTED)
         l2.textDirection = View.TEXT_DIRECTION_LTR
         box.addView(l2)
