@@ -2,6 +2,10 @@ package com.aftercall.app
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import com.googlecode.tesseract.android.TessBaseAPI
 import java.io.File
 
@@ -33,7 +37,7 @@ class ArabicOcr(private val ctx: Context) {
                 return false
             }
             t.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT)
-            t.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "٠١٢٣٤٥٦٧٨٩0123456789+. ")
+            t.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "٠١٢٣٤٥٦٧٨٩0123456789+.Oo ")
             api = t
             ready = true
             return true
@@ -46,10 +50,28 @@ class ArabicOcr(private val ctx: Context) {
     fun read(b: Bitmap): String {
         val t = api ?: return ""
         return try {
-            t.setImage(b)
+            t.setImage(enhance(b))
             t.getUTF8Text() ?: ""
         } catch (e: Throwable) {
             ""
+        }
+    }
+
+    // رمادي + رفع التباين، يساعد مع الإضاءة الضعيفة وانعكاس الشاشات
+    private fun enhance(b: Bitmap): Bitmap {
+        return try {
+            val o = Bitmap.createBitmap(b.width, b.height, Bitmap.Config.ARGB_8888)
+            val c = ColorMatrix()
+            c.setSaturation(0f)
+            val k = 2.2f
+            val t = (-0.5f * k + 0.5f) * 255f
+            c.postConcat(ColorMatrix(floatArrayOf(k, 0f, 0f, 0f, t, 0f, k, 0f, 0f, t, 0f, 0f, k, 0f, t, 0f, 0f, 0f, 1f, 0f)))
+            val p = Paint()
+            p.colorFilter = ColorMatrixColorFilter(c)
+            Canvas(o).drawBitmap(b, 0f, 0f, p)
+            o
+        } catch (e: Throwable) {
+            b
         }
     }
 

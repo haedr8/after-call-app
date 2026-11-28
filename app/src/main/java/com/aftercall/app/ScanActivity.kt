@@ -362,7 +362,13 @@ class ScanActivity : ComponentActivity() {
             try {
                 val txt = ar.read(bmp)
                 val nums = PhoneScan.findAll(applicationContext, txt)
-                ui.post { onNumbers(nums) }
+                ui.post {
+                    if (nums.isEmpty() && !done) {
+                        val raw = txt.replace(Regex("\\s+"), " ").trim().take(40)
+                        if (raw.isNotEmpty()) hint.text = "قرأت: $raw"
+                    }
+                    onNumbers(nums)
+                }
             } finally {
                 tessBusy.set(false)
             }
