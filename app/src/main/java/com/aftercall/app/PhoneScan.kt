@@ -90,6 +90,17 @@ object PhoneScan {
                 if (n != null) out.add(n)
             }
         }
+        // الصفر العربي «٠» يظهر في بعض الخطوط نقطة صغيرة فيقرؤها OCR نقطة.
+        // نجرب تحويل النقاط إلى أصفار، ونقبل فقط إذا صار رقمًا عراقيًا صحيحًا.
+        val dotted = src.replace(Regex("[.•·∙●]"), "0")
+        if (dotted != src) {
+            for (ln in dotted.lines() + listOf(dotted.replace('\n', ' '))) {
+                for (m in cand.findAll(ln)) {
+                    val n = norm(ctx, m.value)
+                    if (n != null && n.startsWith("0")) out.add(n)
+                }
+            }
+        }
         return out.toList()
     }
 }

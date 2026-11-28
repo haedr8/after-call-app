@@ -32,4 +32,9 @@ class PhoneScanTest {
     @Test fun tooLongRejected() = assertTrue(f("0771 238 4075 99").size <= 1)
     @Test fun otherInternationalKept() = assertEquals(listOf("+442079460958"), f("+44 20 7946 0958"))
     @Test fun emptyText() = assertTrue(f("").isEmpty())
+
+    @Test
+    fun dotAsArabicZero() {
+        assertEquals(listOf("07702491497"), PhoneScan.findAll(null, ".٧٧.٢٤٩١٤٩٧"))
+    }
 }

@@ -33,7 +33,7 @@ class ArabicOcr(private val ctx: Context) {
                 return false
             }
             t.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT)
-            t.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "٠١٢٣٤٥٦٧٨٩0123456789+ ")
+            t.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "٠١٢٣٤٥٦٧٨٩0123456789+. ")
             api = t
             ready = true
             return true
